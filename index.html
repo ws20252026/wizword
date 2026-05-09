@@ -23,8 +23,8 @@
 <body>
   <div id="loading"><div class="bolt">⚡</div><div class="txt">載入魔法單字庫…</div></div>
   <div id="root"></div>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+  <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+  <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
   <script>
 "use strict";
 const { useState, useEffect, useCallback, useRef } = React;
@@ -1088,12 +1088,14 @@ React.createElement(“button”, { style: { background: “none”, border: “
 upd(() => ({})); } }, “\u91CD\u7F6E\u9032\u5EA6”)));
 })())));
 }
-}
 try {
 ReactDOM.createRoot(document.getElementById(‘root’)).render(React.createElement(App));
 document.getElementById(‘loading’).remove();
 } catch(e) {
-document.getElementById(‘loading’).innerHTML = ‘<div style="color:#ef4444;padding:20px;text-align:center;font-family:monospace">⚠️ 載入錯誤<br><small style="color:#8b949e">’ + e.message + ‘</small></div>’;
+document.getElementById(‘loading’).innerHTML =
+‘<div style="color:#ef4444;padding:30px 20px;text-align:center;font-family:monospace;line-height:1.8">’ +
+‘⚠️ 載入錯誤<br><span style="color:#8b949e;font-size:.8rem">’ + e.message + ‘</span></div>’;
+console.error(e);
 }
 </script>
 
