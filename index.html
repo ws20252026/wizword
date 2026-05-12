@@ -23,8 +23,308 @@
 <body>
   <div id="loading"><div class="bolt">⚡</div><div class="txt">載入魔法單字庫…</div></div>
   <div id="root"></div>
-  <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
-  <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+
+  <script>
+// MiniReact - minimal React-compatible runtime (no dependencies)
+(function(global) {
+"use strict";
+
+// ── Fiber / render engine ──────────────────────────────────────────────────
+let currentComponent = null;
+let hookIndex = 0;
+
+function useState(init) {
+  const comp = currentComponent;
+  const idx = hookIndex++;
+  if (comp.hooks[idx] === undefined) {
+    comp.hooks[idx] = typeof init === 'function' ? init() : init;
+  }
+  const setState = (val) => {
+    const next = typeof val === 'function' ? val(comp.hooks[idx]) : val;
+    if (next !== comp.hooks[idx]) {
+      comp.hooks[idx] = next;
+      scheduleUpdate(comp);
+    }
+  };
+  return [comp.hooks[idx], setState];
+}
+
+function useRef(init) {
+  const comp = currentComponent;
+  const idx = hookIndex++;
+  if (comp.hooks[idx] === undefined) comp.hooks[idx] = {current: init};
+  return comp.hooks[idx];
+}
+
+function useCallback(fn, deps) {
+  return useMemo(() => fn, deps);
+}
+
+function useMemo(fn, deps) {
+  const comp = currentComponent;
+  const idx = hookIndex++;
+  const prev = comp.hooks[idx];
+  if (!prev || !deps || deps.some((d,i) => d !== prev.deps[i])) {
+    comp.hooks[idx] = {val: fn(), deps: deps || []};
+  }
+  return comp.hooks[idx].val;
+}
+
+function useEffect(fn, deps) {
+  const comp = currentComponent;
+  const idx = hookIndex++;
+  const prev = comp.hooks[idx];
+  if (!prev || !deps || deps.some((d,i) => d !== (prev.deps||[])[i])) {
+    comp.hooks[idx] = {deps: deps || [], cleanup: null};
+    comp.pendingEffects = comp.pendingEffects || [];
+    comp.pendingEffects.push({fn, slot: idx});
+  }
+}
+
+function useReducer(reducer, init, initFn) {
+  const [state, setState] = useState(initFn ? initFn(init) : init);
+  const dispatch = (action) => setState(s => reducer(s, action));
+  return [state, dispatch];
+}
+
+// ── Virtual DOM ────────────────────────────────────────────────────────────
+function createElement(type, props, ...children) {
+  const flatChildren = children.flat(Infinity).filter(c => c != null && c !== false && c !== true);
+  return {
+    type,
+    props: props || {},
+    children: flatChildren,
+    _vdom: true
+  };
+}
+
+const Fragment = Symbol('Fragment');
+
+// ── Component instances ────────────────────────────────────────────────────
+const compMap = new WeakMap();
+
+function renderComponent(vnode, domParent, domBefore) {
+  const {type, props, children} = vnode;
+  const allProps = {...props, children: children.length === 1 ? children[0] : children};
+
+  let inst = vnode._inst;
+  if (!inst) {
+    inst = {hooks: [], pendingEffects: [], dom: null, vdom: null, props: allProps};
+    vnode._inst = inst;
+  }
+  inst.props = allProps;
+
+  currentComponent = inst;
+  hookIndex = 0;
+  let result;
+  try {
+    result = type(allProps);
+  } catch(e) {
+    console.error('Component error:', e);
+    return null;
+  }
+  currentComponent = null;
+
+  const newDom = reconcile(result, domParent, inst.dom, domBefore);
+  inst.dom = newDom;
+  inst.vdom = result;
+
+  // Run effects
+  if (inst.pendingEffects?.length) {
+    const effects = inst.pendingEffects;
+    inst.pendingEffects = [];
+    setTimeout(() => {
+      effects.forEach(({fn, slot}) => {
+        if (inst.hooks[slot]?.cleanup) inst.hooks[slot].cleanup();
+        const cleanup = fn();
+        inst.hooks[slot].cleanup = cleanup || null;
+      });
+    }, 0);
+  }
+
+  return newDom;
+}
+
+function reconcile(vnode, parent, existing, before) {
+  if (vnode == null || vnode === false) {
+    if (existing) parent.removeChild(existing);
+    return null;
+  }
+  if (typeof vnode === 'string' || typeof vnode === 'number') {
+    if (existing?.nodeType === 3) {
+      if (existing.textContent != vnode) existing.textContent = vnode;
+      return existing;
+    }
+    const t = document.createTextNode(String(vnode));
+    if (existing) parent.replaceChild(t, existing);
+    else if (before) parent.insertBefore(t, before);
+    else parent.appendChild(t);
+    return t;
+  }
+  if (Array.isArray(vnode)) {
+    // Fragment-like
+    let dom = existing;
+    let frag = document.createDocumentFragment();
+    vnode.forEach(c => reconcile(c, frag, null, null));
+    if (existing) parent.replaceChild(frag, existing);
+    else if (before) parent.insertBefore(frag, before);
+    else parent.appendChild(frag);
+    return null;
+  }
+  if (!vnode._vdom) return null;
+
+  const {type, props, children} = vnode;
+
+  // Fragment
+  if (type === Fragment || type === Symbol.for('react.fragment')) {
+    const arr = children.flat(Infinity).filter(Boolean);
+    arr.forEach(c => reconcile(c, parent, null, before));
+    return null;
+  }
+
+  // Function component
+  if (typeof type === 'function') {
+    vnode._inst = existing?._vnode?._inst;
+    const dom = renderComponent(vnode, parent, before);
+    if (existing && dom !== existing) {
+      if (existing.parentNode === parent) parent.removeChild(existing);
+    }
+    if (dom && !dom.parentNode) {
+      if (before) parent.insertBefore(dom, before);
+      else parent.appendChild(dom);
+    }
+    return dom;
+  }
+
+  // DOM element
+  let el;
+  const tag = typeof type === 'string' ? type : null;
+  if (!tag) return null;
+
+  if (existing?.tagName?.toLowerCase() === tag) {
+    el = existing;
+  } else {
+    el = document.createElement(tag);
+    if (existing) parent.replaceChild(el, existing);
+    else if (before) parent.insertBefore(el, before);
+    else parent.appendChild(el);
+  }
+
+  el._vnode = vnode;
+
+  // Apply props
+  const skip = new Set(['children','key','ref']);
+  // Clear old event listeners (simple: clone node is too heavy, track instead)
+  if (!el._listeners) el._listeners = {};
+
+  for (const [k, v] of Object.entries(props || {})) {
+    if (skip.has(k)) continue;
+    if (k === 'style' && typeof v === 'object') {
+      Object.assign(el.style, v);
+    } else if (k === 'className') {
+      el.className = v || '';
+    } else if (k === 'dangerouslySetInnerHTML') {
+      el.innerHTML = v.__html;
+    } else if (k.startsWith('on') && typeof v === 'function') {
+      const evt = k.slice(2).toLowerCase();
+      if (el._listeners[evt] && el._listeners[evt] !== v) {
+        el.removeEventListener(evt, el._listeners[evt]);
+      }
+      el._listeners[evt] = v;
+      el.addEventListener(evt, v);
+    } else if (k === 'htmlFor') {
+      el.setAttribute('for', v);
+    } else if (k === 'disabled') {
+      if (v) el.setAttribute('disabled', ''); else el.removeAttribute('disabled');
+    } else if (k === 'checked' || k === 'value') {
+      el[k] = v;
+    } else if (k === 'autoComplete') {
+      el.setAttribute('autocomplete', v);
+    } else if (k === 'autoCorrect') {
+      el.setAttribute('autocorrect', v);
+    } else if (k === 'spellCheck') {
+      el.setAttribute('spellcheck', String(v));
+    } else if (k === 'ref' && v) {
+      v.current = el;
+    } else if (typeof v === 'string' || typeof v === 'number') {
+      el.setAttribute(k.replace(/([A-Z])/g, '-$1').toLowerCase(), v);
+    }
+  }
+
+  // Reconcile children
+  const flat = children.flat(Infinity).filter(c => c != null && c !== false && c !== true);
+  const existingChildren = Array.from(el.childNodes);
+  flat.forEach((c, i) => reconcile(c, el, existingChildren[i] || null, null));
+  // Remove extra children
+  for (let i = flat.length; i < existingChildren.length; i++) {
+    if (existingChildren[i].parentNode === el) el.removeChild(existingChildren[i]);
+  }
+
+  return el;
+}
+
+// ── Update scheduler ──────────────────────────────────────────────────────
+const pending = new Set();
+let scheduled = false;
+function scheduleUpdate(comp) {
+  pending.add(comp);
+  if (!scheduled) {
+    scheduled = true;
+    Promise.resolve().then(flushUpdates);
+  }
+}
+function flushUpdates() {
+  scheduled = false;
+  const toUpdate = [...pending];
+  pending.clear();
+  toUpdate.forEach(comp => {
+    if (comp._root) {
+      comp._root._rerender();
+    }
+  });
+}
+
+// ── createRoot ─────────────────────────────────────────────────────────────
+function createRoot(container) {
+  let rootVnode = null;
+  const root = {
+    render(element) {
+      rootVnode = element;
+      container.innerHTML = '';
+      const dom = reconcile(element, container, null, null);
+      this._lastDom = dom;
+    },
+    _rerender() {
+      if (rootVnode) {
+        reconcile(rootVnode, container, this._lastDom, null);
+      }
+    }
+  };
+  return root;
+}
+
+// ── Expose globals ─────────────────────────────────────────────────────────
+global.React = {
+  createElement,
+  Fragment,
+  useState,
+  useEffect,
+  useCallback,
+  useMemo,
+  useReducer,
+  useRef,
+  createContext: () => ({Provider: ({children}) => children, _ctx: true}),
+  useContext: () => null,
+  memo: (c) => c,
+  version: '18.2.0-mini',
+};
+
+global.ReactDOM = { createRoot };
+
+})(window);
+
+  </script>
+
   <script>
 "use strict";
 const { useState, useEffect, useCallback, useRef } = React;
@@ -1032,24 +1332,24 @@ body{background:#0d1117}
 .filt{background:#161b22;border:1px solid #30363d;border-radius:8px;padding:5px 11px;font-family:monospace;font-size:.66rem;cursor:pointer;color:#8b949e;transition:all .15s}
 .filt.on{background:#7c3aed;border-color:#7c3aed;color:white}
 
-.btn{border:none;border-radius:12px;padding:12px 17px;font-family:‘Cinzel’,serif;font-size:.84rem;font-weight:700;cursor:pointer;letter-spacing:.04em;transition:all .18s;display:block;text-align:center}
+.btn{border:none;border-radius:12px;padding:12px 17px;font-family:'Cinzel',serif;font-size:.84rem;font-weight:700;cursor:pointer;letter-spacing:.04em;transition:all .18s;display:block;text-align:center}
 .btn-purple{background:linear-gradient(135deg,#7c3aed,#4f46e5);color:white;box-shadow:0 4px 18px rgba(124,58,237,.3)}
 .btn-purple:hover{transform:translateY(-2px);box-shadow:0 6px 26px rgba(124,58,237,.45)}
 .btn-purple:disabled{opacity:.35;cursor:not-allowed;transform:none!important}
 .btn-gold{background:linear-gradient(135deg,#f0c040,#c9903a);color:#0d1117;box-shadow:0 4px 16px rgba(240,192,64,.2)}
 .btn-gold:hover{transform:translateY(-2px)}
 .btn-gold:disabled{opacity:.35;cursor:not-allowed;transform:none!important}
-.btn-red{background:#2a0d0d;border:1.5px solid #ef4444;color:#ef4444;font-family:‘Cinzel’,serif;font-size:.84rem;font-weight:700;padding:12px;border-radius:12px;cursor:pointer;transition:all .18s;letter-spacing:.04em}
+.btn-red{background:#2a0d0d;border:1.5px solid #ef4444;color:#ef4444;font-family:'Cinzel',serif;font-size:.84rem;font-weight:700;padding:12px;border-radius:12px;cursor:pointer;transition:all .18s;letter-spacing:.04em}
 .btn-red:hover{background:#3a1010}
-.btn-red-soft{background:#1a0808;border:1.5px solid #ef444455;color:#ef4444;font-family:‘Cinzel’,serif;font-size:.82rem;font-weight:700;padding:11px 17px;border-radius:12px;cursor:pointer;transition:all .18s;letter-spacing:.04em;display:block;text-align:center}
+.btn-red-soft{background:#1a0808;border:1.5px solid #ef444455;color:#ef4444;font-family:'Cinzel',serif;font-size:.82rem;font-weight:700;padding:11px 17px;border-radius:12px;cursor:pointer;transition:all .18s;letter-spacing:.04em;display:block;text-align:center}
 .btn-red-soft:hover{border-color:#ef4444;background:#2a0d0d}
 .btn-red-soft:disabled{opacity:.35;cursor:not-allowed}
-.btn-green{background:#0d2a0d;border:1.5px solid #22c55e;color:#22c55e;font-family:‘Cinzel’,serif;font-size:.84rem;font-weight:700;padding:12px;border-radius:12px;cursor:pointer;transition:all .18s;letter-spacing:.04em}
+.btn-green{background:#0d2a0d;border:1.5px solid #22c55e;color:#22c55e;font-family:'Cinzel',serif;font-size:.84rem;font-weight:700;padding:12px;border-radius:12px;cursor:pointer;transition:all .18s;letter-spacing:.04em}
 .btn-green:hover{background:#103a10}
 .btn-ghost{background:#161b22;border:1px solid #30363d;color:#c8d0da;font-family:monospace;font-size:.7rem;letter-spacing:.02em;padding:9px 13px;border-radius:12px;cursor:pointer;transition:all .18s}
 .btn-ghost:hover{border-color:#8b949e}
 .btn-ghost:disabled{opacity:.25;cursor:not-allowed}
-.btn-sm-purple{background:linear-gradient(135deg,#7c3aed,#4f46e5);color:white;border:none;border-radius:8px;padding:6px 13px;font-family:‘Cinzel’,serif;font-size:.74rem;font-weight:700;cursor:pointer;letter-spacing:.04em;white-space:nowrap;transition:all .18s}
+.btn-sm-purple{background:linear-gradient(135deg,#7c3aed,#4f46e5);color:white;border:none;border-radius:8px;padding:6px 13px;font-family:'Cinzel',serif;font-size:.74rem;font-weight:700;cursor:pointer;letter-spacing:.04em;white-space:nowrap;transition:all .18s}
 .btn-sm-purple:hover{transform:translateY(-1px)}
 
 .back{background:#161b22;border:1px solid #30363d;border-radius:8px;padding:5px 11px;font-family:monospace;font-size:.64rem;cursor:pointer;color:#8b949e;transition:all .15s}
@@ -1063,46 +1363,859 @@ body{background:#0d1117}
 .combo{font-family:monospace;font-size:.66rem;font-weight:600;padding:3px 8px;border-radius:20px;background:#1a1a2e;border:1px solid #7c3aed55;color:#a78bfa}
 
 @media(max-width:480px){
-.btn{padding:10px 13px;font-size:.78rem}
-.pill{padding:3px 8px;font-size:.58rem}
+  .btn{padding:10px 13px;font-size:.78rem}
+  .pill{padding:3px 8px;font-size:.58rem}
 }
-`; function App() { const [data, setData] = useState(load); const [screen, setScreen] = useState("home"); const [tagFilter, setTagFilter] = useState("全部"); const [queue, setQueue] = useState([]); const [cIdx, setCIdx] = useState(0); const [seen, setSeen] = useState(new Set()); const [flipped, setFlipped] = useState(false); const [sIdx, setSIdx] = useState(0); const [input, setInput] = useState(""); const [spellRes, setSpellRes] = useState(null); const inputRef = useRef(null); // Ebbinghaus review const [rQueue, setRQueue] = useState([]); const [rIdx, setRIdx] = useState(0); const [rFlip, setRFlip] = useState(false); const [rInput, setRInput] = useState(""); const [rSpellRes, setRSpellRes] = useState(null); // null | "correct" | "wrong" const rInputRef = useRef(null); // Wrong review const [wrQueue, setWrQueue] = useState([]); const [wrIdx, setWrIdx] = useState(0); const [wrFlip, setWrFlip] = useState(false); const [wrInput, setWrInput] = useState(""); const [wrSpellRes, setWrSpellRes] = useState(null); const wrInputRef = useRef(null); const [sXP, setSXP] = useState(0); const [combo, setCombo] = useState(0); const [maxCombo, setMaxCombo] = useState(0); const [sOk, setSOk] = useState(0); const [sBad, setSBad] = useState(0); const [wrongIds, setWrongIds] = useState(new Set()); const [activeNovel, setActiveNovel] = useState(null); const [justUnlocked, setJustUnlocked] = useState(null); // Scramble game state const [scQueue, setScQueue] = useState([]); // words for this scramble session const [scIdx, setScIdx] = useState(0); const [scTokens, setScTokens] = useState([]); // [{id, word, used}] const [scAnswer, setScAnswer] = useState([]); // [{id, word}] const [scResult, setScResult] = useState(null); // null | "correct" | "wrong" const [scXP, setScXP] = useState(0); const [scCombo, setScCombo] = useState(0); const [scMaxCombo, setScMaxCombo] = useState(0); const [scOk, setScOk] = useState(0); const [scBad, setScBad] = useState(0); const upd = useCallback(fn => setData(p => { const n = fn(p); save(n); return n; }), []); // Preload voices so first playback doesn't stutter useEffect(() => { if (!window.speechSynthesis) return; window.speechSynthesis.getVoices(); window.speechSynthesis.onvoiceschanged = () => { _voice = null; pickVoice(); }; }, []); const getWords = useCallback(tag => tag === "全部" ? ALL_WORDS : ALL_WORDS.filter(w => w.tag === tag), []); const getTodayWords = useCallback(() => { var _a; const today = new Date().toDateString(); if (data.lastDate === today && ((_a = data.dailyIds) === null || _a === void 0 ? void 0 : _a.length)) return data.dailyIds.map(id => ALL_WORDS.find(w => w.id === id)).filter(Boolean); return shuffled(getWords(tagFilter).filter(w => !(data.progress || {})[w.id])).slice(0, WORDS_PER_DAY); }, [data, tagFilter, getWords]); const startLearn = useCallback(() => { var _a; const today = new Date().toDateString(); let words, ids; if (data.lastDate === today && ((_a = data.dailyIds) === null || _a === void 0 ? void 0 : _a.length)) { ids = data.dailyIds; words = ids.map(id => ALL_WORDS.find(w => w.id === id)).filter(Boolean); } else { words = shuffled(getWords(tagFilter).filter(w => !(data.progress || {})[w.id])).slice(0, WORDS_PER_DAY); ids = words.map(w => w.id); upd(d => (Object.assign(Object.assign({}, d), { lastDate: today, dailyIds: ids }))); } if (!words.length) return; setQueue(words); setCIdx(0); setSeen(new Set([words[0].id])); setFlipped(false); setSXP(0); setCombo(0); setMaxCombo(0); setSOk(0); setSBad(0); setWrongIds(new Set()); setScreen("cards"); }, [data, tagFilter, getWords, upd]); const onSwipe = useCallback((dir) => { const next = cIdx + dir; if (next < 0 || next >= queue.length) return; setCIdx(next); setFlipped(false); setSeen(s => { const ns = new Set(s); ns.add(queue[next].id); return ns; }); }, [cIdx, queue]); const allSeen = queue.length > 0 && queue.every(w => seen.has(w.id)); const startSpell = () => { setSIdx(0); setInput(""); setSpellRes(null); setCombo(0); setWrongIds(new Set()); setSOk(0); setSBad(0); setSXP(0); setMaxCombo(0); spellCorrectSet.current = new Set(); setScreen("spell"); setTimeout(() => { var _a; return (_a = inputRef.current) === null || _a === void 0 ? void 0 : _a.focus(); }, 150); }; // Track whether each card in the queue has been answered correctly const spellCorrectSet = useRef(new Set()); const prevMastered = useRef(0); const retrySpell = () => { // Reset just this card's input, keep score intact setInput(""); setSpellRes(null); setTimeout(() => { var _a; return (_a = inputRef.current) === null || _a === void 0 ? void 0 : _a.focus(); }, 100); }; const advanceSpell = () => { if (sIdx + 1 < queue.length) { setSIdx(i => i + 1); setInput(""); setSpellRes(null); setTimeout(() => { var _a; return (_a = inputRef.current) === null || _a === void 0 ? void 0 : _a.focus(); }, 100); } else { // Only succeed if every card was answered correctly at least once const allCorrect = queue.every(w => spellCorrectSet.current.has(w.id)); if (allCorrect) { const todayStr = new Date().toDateString(); upd(d => { const prev = d.checkedDates || []; return Object.assign(Object.assign({}, d), { checkedDates: prev.includes(todayStr) ? prev : [...prev, todayStr] }); }); const nm = ALL_WORDS.filter(w => { var _a; return ((_a = (data.progress || {})[w.id]) === null || _a === void 0 ? void 0 : _a.level) >= 3; }).length; const ul = NOVELS.find(n => n.need <= nm && n.need > prevMastered.current); if (ul) setJustUnlocked(ul); } setScreen("done"); } }; const submitSpell = () => { if (spellRes) { advanceSpell(); return; } const card = queue[sIdx]; const ok = input.trim().toLowerCase() === card.word.toLowerCase(); setSpellRes(ok ? "correct" : "wrong"); const nc = ok ? combo + 1 : 0; setCombo(nc); setMaxCombo(m => Math.max(m, nc)); const earned = ok ? XP_OK + (nc >= 3 ? XP_BONUS : 0) : 0; if (ok) { setSOk(c => c + 1); spellCorrectSet.current.add(card.id); } else { setSBad(c => c + 1); setWrongIds(s => { const ns = new Set(s); ns.add(card.id); return ns; }); } setSXP(x => x + earned); upd(d => { const prev = (d.progress || {})[card.id] || { level: 0, correct: 0, incorrect: 0 }; const nl = ok ? Math.min(prev.level + 1, EBBINGHAUS.length - 1) : Math.max(0, prev.level - 1); prevMastered.current = ALL_WORDS.filter(w => { var _a; return ((_a = (d.progress || {})[w.id]) === null || _a === void 0 ? void 0 : _a.level) >= 3; }).length; return Object.assign(Object.assign({}, d), { xp: (d.xp || 0) + earned, progress: Object.assign(Object.assign({}, d.progress), { [card.id]: Object.assign(Object.assign({}, prev), { level: nl, correct: prev.correct + (ok ? 1 : 0), incorrect: prev.incorrect + (ok ? 0 : 1), lastReview: new Date().toISOString(), nextReview: nextReview(nl) }) }) }); }); }; const startWrongReview = () => { const words = [...wrongIds].map(id => ALL_WORDS.find(w => w.id === id)).filter(Boolean); if (!words.length) return; setWrQueue(shuffled(words)); setWrIdx(0); setWrInput(""); setWrSpellRes(null); setScreen("wrongReview"); setTimeout(() => { var _a; return (_a = wrInputRef.current) === null || _a === void 0 ? void 0 : _a.focus(); }, 150); }; const wrongRetry = () => { setWrInput(""); setWrSpellRes(null); setTimeout(() => { var _a; return (_a = wrInputRef.current) === null || _a === void 0 ? void 0 : _a.focus(); }, 100); }; const wrongSubmit = () => { if (wrSpellRes) { if (wrSpellRes === "wrong") { wrongRetry(); return; } // retry stays on same card // correct → advance if (wrIdx + 1 < wrQueue.length) { setWrIdx(i => i + 1); setWrInput(""); setWrSpellRes(null); setTimeout(() => { var _a; return (_a = wrInputRef.current) === null || _a === void 0 ? void 0 : _a.focus(); }, 100); } else setScreen("done"); return; } const card = wrQueue[wrIdx]; const ok = wrInput.trim().toLowerCase() === card.word.toLowerCase(); setWrSpellRes(ok ? "correct" : "wrong"); upd(d => { const prev = (d.progress || {})[card.id] || { level: 0, correct: 0, incorrect: 0 }; const nl = ok ? Math.min(prev.level + 1, EBBINGHAUS.length - 1) : Math.max(0, prev.level - 1); return Object.assign(Object.assign({}, d), { progress: Object.assign(Object.assign({}, d.progress), { [card.id]: Object.assign(Object.assign({}, prev), { level: nl, correct: prev.correct + (ok ? 1 : 0), incorrect: prev.incorrect + (ok ? 0 : 1), lastReview: new Date().toISOString(), nextReview: nextReview(nl) }) }) }); }); }; const wrongSkip = () => { if (wrIdx + 1 < wrQueue.length) { setWrIdx(i => i + 1); setWrInput(""); setWrSpellRes(null); setTimeout(() => { var _a; return (_a = wrInputRef.current) === null || _a === void 0 ? void 0 : _a.focus(); }, 100); } else setScreen("done"); }; const startReview = () => { const prog = data.progress || {}; const words = shuffled(getWords(tagFilter).filter(w => isDue(prog[w.id]))); if (!words.length) return; setRQueue(words); setRIdx(0); setRInput(""); setRSpellRes(null); setSXP(0); setCombo(0); setMaxCombo(0); setSOk(0); setSBad(0); setWrongIds(new Set()); setScreen("review"); setTimeout(() => { var _a; return (_a = rInputRef.current) === null || _a === void 0 ? void 0 : _a.focus(); }, 150); }; const reviewRetry = () => { setRInput(""); setRSpellRes(null); setTimeout(() => { var _a; return (_a = rInputRef.current) === null || _a === void 0 ? void 0 : _a.focus(); }, 100); }; const reviewSubmit = () => { if (rSpellRes) { if (rSpellRes === "wrong") { reviewRetry(); return; } // correct → advance if (rIdx + 1 < rQueue.length) { setRIdx(i => i + 1); setRInput(""); setRSpellRes(null); setTimeout(() => { var _a; return (_a = rInputRef.current) === null || _a === void 0 ? void 0 : _a.focus(); }, 100); } else setScreen("done"); return; } const card = rQueue[rIdx]; const ok = rInput.trim().toLowerCase() === card.word.toLowerCase(); setRSpellRes(ok ? "correct" : "wrong"); const nc = ok ? combo + 1 : 0; setCombo(nc); setMaxCombo(m => Math.max(m, nc)); const earned = ok ? XP_OK + (nc >= 3 ? XP_BONUS : 0) : 0; if (ok) setSOk(c => c + 1); else { setSBad(c => c + 1); setWrongIds(s => { const ns = new Set(s); ns.add(card.id); return ns; }); } setSXP(x => x + earned); upd(d => { const prev = (d.progress || {})[card.id] || { level: 0, correct: 0, incorrect: 0 }; const nl = ok ? Math.min(prev.level + 1, EBBINGHAUS.length - 1) : Math.max(0, prev.level - 1); return Object.assign(Object.assign({}, d), { xp: (d.xp || 0) + earned, progress: Object.assign(Object.assign({}, d.progress), { [card.id]: Object.assign(Object.assign({}, prev), { level: nl, correct: prev.correct + (ok ? 1 : 0), incorrect: prev.incorrect + (ok ? 0 : 1), lastReview: new Date().toISOString(), nextReview: nextReview(nl) }) }) }); }); }; const reviewSkip = () => { setSBad(c => c + 1); setWrongIds(s => { const ns = new Set(s); ns.add(rQueue[rIdx].id); return ns; }); if (rIdx + 1 < rQueue.length) { setRIdx(i => i + 1); setRInput(""); setRSpellRes(null); setTimeout(() => { var _a; return (_a = rInputRef.current) === null || _a === void 0 ? void 0 : _a.focus(); }, 100); } else setScreen("done"); }; // ── Scramble game helpers ── function tokenize(sentence) { // Split sentence into word tokens, preserving punctuation attached to words return sentence.match(/[\w']+[.,!?—;:]?/g) || sentence.split(" "); } function makeScTokens(sentence) { return shuffled(tokenize(sentence).map((w, i) => ({ id: i, word: w, used: false }))); } const startScramble = () => { // Pick all words that have been learned (have progress), shuffle them const pool = shuffled(ALL_WORDS.filter(w => (data.progress || {})[w.id])); const picks = pool.length >= 5 ? pool.slice(0, 5) : shuffled(ALL_WORDS).slice(0, 5); const tokens = makeScTokens(picks[0].example); setScQueue(picks); setScIdx(0); setScTokens(tokens); setScAnswer([]); setScResult(null); setScXP(0); setScCombo(0); setScMaxCombo(0); setScOk(0); setScBad(0); setScreen("scramble"); }; const scTapToken = (tok) => { if (scResult || tok.used) return; setScTokens(ts => ts.map(t => t.id === tok.id ? Object.assign(Object.assign({}, t), { used: true }) : t)); setScAnswer(a => [...a, { id: tok.id, word: tok.word }]); }; const scRemoveLast = () => { if (scResult || !scAnswer.length) return; const last = scAnswer[scAnswer.length - 1]; setScAnswer(a => a.slice(0, -1)); setScTokens(ts => ts.map(t => t.id === last.id ? Object.assign(Object.assign({}, t), { used: false }) : t)); }; const scClear = () => { if (scResult) return; setScAnswer([]); setScTokens(ts => ts.map(t => (Object.assign(Object.assign({}, t), { used: false })))); }; const submitScramble = () => { if (scResult) { if (scIdx + 1 < scQueue.length) { const next = scIdx + 1; setScIdx(next); setScTokens(makeScTokens(scQueue[next].example)); setScAnswer([]); setScResult(null); } else { setScreen("done"); } return; } const card = scQueue[scIdx]; const correct = tokenize(card.example); const attempt = scAnswer.map(a => a.word); // Allow if all tokens placed and match const ok = attempt.length === correct.length && attempt.every((w, i) => w.toLowerCase() === correct[i].toLowerCase()); setScResult(ok ? "correct" : "wrong"); const nc = ok ? scCombo + 1 : 0; setScCombo(nc); setScMaxCombo(m => Math.max(m, nc)); const earned = ok ? XP_OK + (nc >= 3 ? XP_BONUS : 0) : 0; if (ok) setScOk(c => c + 1); else setScBad(c => c + 1); setScXP(x => x + earned); upd(d => { const prev = (d.progress || {})[card.id] || { level: 0, correct: 0, incorrect: 0 }; const nl = ok ? Math.min(prev.level + 1, EBBINGHAUS.length - 1) : Math.max(0, prev.level - 1); return Object.assign(Object.assign({}, d), { xp: (d.xp || 0) + earned, progress: Object.assign(Object.assign({}, d.progress), { [card.id]: Object.assign(Object.assign({}, prev), { level: nl, correct: prev.correct + (ok ? 1 : 0), incorrect: prev.incorrect + (ok ? 0 : 1), lastReview: new Date().toISOString(), nextReview: nextReview(nl) }) }) }); }); }; function ReviewCard({ card, flipped, setFlipped, borderColor = "#30363d", accentColor = "#ef4444" }) { const ts = card.tag === "高中" ? { background: "#1a2a1a", border: "1px solid #22c55e44", color: "#22c55e" } : { background: "#1a1a2e", border: "1px solid #7c3aed44", color: "#a78bfa" }; return (React.createElement("div", { style: { perspective: 1100, marginBottom: 14, cursor: "pointer" }, onClick: () => !flipped && setFlipped(true) }, React.createElement("div", { style: { width: "100%", minHeight: 340, position: "relative", transformStyle: "preserve-3d", transform: `rotateY(${flipped ? 180 : 0}deg)`, transition: "transform .5s cubic-bezier(.4,0,.2,1)", borderRadius: 20 } }, React.createElement("div", { style: { position: "absolute", inset: 0, backfaceVisibility: "hidden", WebkitBackfaceVisibility: "hidden", borderRadius: 20, background: "#161b22", border: `1px solid ${borderColor}`, display: "flex", flexDirection: "column", padding: "22px 20px" } }, React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 } }, React.createElement("div", { style: Object.assign({ fontFamily: "monospace", fontSize: ".56rem", padding: "2px 8px", borderRadius: 20 }, ts) }, card.tag === "高中" ? "📗" : "🎓", " ", card.tag), !flipped && React.createElement("span", { style: { fontFamily: "monospace", fontSize: ".52rem", color: "#2a3545" } }, "\u9EDE\u64CA\u7FFB\u9762")), React.createElement("div", { style: { display: "flex", alignItems: "flex-end", gap: 8, marginBottom: 4 } }, React.createElement("div", { style: { fontFamily: "'Cinzel',serif", fontSize: "2.2rem", fontWeight: 900, color: accentColor, lineHeight: 1 } }, card.word), React.createElement(SpeakBtn, { text: card.word, mode: "word", label: "\uD83D\uDD0A", style: { marginBottom: 3 } })), React.createElement("div", { style: { fontFamily: "monospace", fontSize: ".66rem", color: "#8b949e", marginBottom: 3 } }, card.phonetic), React.createElement("div", { style: { fontFamily: "monospace", fontSize: ".6rem", color: "#c9903a", marginBottom: 12 } }, card.pos), React.createElement("div", { style: { height: 1, background: "#21262d", marginBottom: 12 } }), React.createElement("div", { style: { fontFamily: "Georgia,serif", fontStyle: "italic", fontSize: ".85rem", color: "#a0aab4", lineHeight: 1.7, marginBottom: 6 } }, React.createElement(Hl, { s: card.example, w: card.word })), React.createElement(SpeakBtn, { text: card.example, mode: "sentence", label: "\uD83C\uDF99 \u6717\u8B80\u4F8B\u53E5", style: { marginBottom: 8 } }), React.createElement("div", { style: { fontFamily: "Georgia,serif", fontSize: ".75rem", color: "#5a6a7a", lineHeight: 1.55, paddingLeft: 7, borderLeft: "2px solid #2a3545" } }, card.exTrans)), React.createElement("div", { style: { position: "absolute", inset: 0, backfaceVisibility: "hidden", WebkitBackfaceVisibility: "hidden", borderRadius: 20, background: "linear-gradient(160deg,#1c1033,#0f0a1e)", border: "1px solid #3d2e6b", transform: "rotateY(180deg)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center", padding: "32px 26px" } }, React.createElement("div", { style: { fontFamily: "Georgia,serif", fontSize: "1.9rem", fontWeight: 700, color: "#f0c040", lineHeight: 1.3, marginBottom: 10 } }, card.meaning), React.createElement("div", { style: { fontFamily: "monospace", fontSize: ".68rem", color: "#c9903a", marginBottom: 16 } }, card.pos), React.createElement("div", { style: { display: "flex", gap: 8, justifyContent: "center", marginBottom: 4 } }, React.createElement(SpeakBtn, { text: card.word, mode: "word", label: "\uD83D\uDD0A \u55AE\u5B57" }), React.createElement(SpeakBtn, { text: card.example, mode: "sentence", label: "\uD83C\uDF99 \u4F8B\u53E5" })))))); } const prog = data.progress || {}; const xp = data.xp || 0; const checkedDates = data.checkedDates || []; const streak = calcStreak(checkedDates); const todayW = getTodayWords(); const dueCount = ALL_WORDS.filter(w => isDue(prog[w.id])).length; const learned = ALL_WORDS.filter(w => { var _a; return ((_a = prog[w.id]) === null || _a === void 0 ? void 0 : _a.level) > 0; }).length; const mastered = ALL_WORDS.filter(w => { var _a; return (((_a = prog[w.id]) === null || _a === void 0 ? void 0 : _a.level) || 0) >= 3; }).length; const todayDone = todayW.length > 0 && todayW.every(w => prog[w.id]); const curCard = queue[cIdx], spellCard = queue[sIdx], revCard = rQueue[rIdx], wrCard = wrQueue[wrIdx]; return (React.createElement("div", { style: { minHeight: "100vh", background: "#0d1117", color: "#e6edf3", fontFamily: "Georgia,serif", display: "flex", flexDirection: "column", alignItems: "center" } }, React.createElement("style", null, CSS), React.createElement("div", { style: { width: "100%", maxWidth: 700, padding: "16px 16px 0", display: "flex", alignItems: "center", gap: 8 } }, React.createElement("div", null, React.createElement("div", { style: { fontFamily: "'Cinzel',serif", fontSize: "1.15rem", fontWeight: 900, color: "#f0c040", letterSpacing: ".05em" } }, "\u26A1 WizWord"), React.createElement("div", { style: { fontFamily: "monospace", fontSize: ".5rem", color: "#8b949e", letterSpacing: ".08em", textTransform: "uppercase" } }, "Ebbinghaus \u00B7 Harry Potter")), React.createElement("div", { style: { marginLeft: "auto", display: "flex", gap: 4 } }, React.createElement("button", { className: `pill ${screen !== “stats” && screen !== “library” && screen !== “novel” ? “on” : “”}`, onClick: () => setScreen("home") }, "\u9996\u9801"), React.createElement("button", { className: `pill ${screen === “library” || screen === “novel” ? “on” : “”}`, onClick: () => setScreen("library") }, "\uD83D\uDCDA"), React.createElement("button", { className: `pill ${screen === “stats” ? “on” : “”}`, onClick: () => setScreen("stats") }, "\u7D71\u8A08"))), React.createElement("div", { style: { width: "100%", maxWidth: 700, padding: "8px 16px 0", display: "flex", alignItems: "center", gap: 7 } }, React.createElement("span", { className: "badge" }, "Lv.", getLvl(xp)), React.createElement("div", { style: { flex: 1, height: 5, background: "#21262d", borderRadius: 3, overflow: "hidden" } }, React.createElement("div", { style: { height: "100%", width: `${getXpRem(xp)}%`, background: "linear-gradient(90deg,#7c3aed,#f0c040)", borderRadius: 3, transition: "width .5s" } })), React.createElement("span", { style: { fontFamily: "monospace", fontSize: ".56rem", color: "#8b949e", whiteSpace: "nowrap" } }, getXpRem(xp), "/", XP_LVL), streak > 0 && React.createElement("span", { className: "badge" }, "\uD83D\uDD25", streak), React.createElement("span", { className: "badge", style: { color: "#a78bfa" } }, "\u26A1", mastered)), React.createElement("div", { style: { width: "100%", maxWidth: 700, padding: "18px 16px 60px" } }, screen === "home" && (React.createElement(React.Fragment, null, React.createElement(StreakCard, { streak: streak, checkedDates: checkedDates, todayDone: todayDone }), React.createElement("div", { style: { background: "linear-gradient(135deg,#1c1033,#0d1117)", border: "1px solid #3d2e6b", borderRadius: 16, padding: 24, marginBottom: 14, position: "relative", overflow: "hidden" } }, React.createElement("div", { style: { position: "absolute", right: 16, top: 12, fontSize: "2.6rem", opacity: .06, pointerEvents: "none" } }, "\u26A1"), React.createElement("div", { style: { fontFamily: "monospace", fontSize: ".56rem", letterSpacing: ".12em", textTransform: "uppercase", color: "#7c3aed", marginBottom: 7 } }, "\u4ECA\u65E5\u4EFB\u52D9"), React.createElement("div", { style: { fontFamily: "'Cinzel',serif", fontSize: "1.25rem", fontWeight: 900, color: "#f0c040", marginBottom: 3 } }, "\u6BCF\u65E5 5 \u500B\u9B54\u6CD5\u55AE\u5B57"), React.createElement("div", { style: { fontFamily: "Georgia,serif", fontSize: ".8rem", color: "#8b949e", marginBottom: 16 } }, "\u5DE6\u53F3\u6ED1\u52D5 \u00B7 \u82F1\u6587\u4F8B\u53E5\uFF0B\u4E2D\u6587\u7FFB\u8B6F \u00B7 \u9ED8\u5BEB\u6311\u6230"), React.createElement("div", { style: { display: "grid", gridTemplateColumns: "repeat(5,1fr)", gap: 6, marginBottom: 16 } }, (todayW.length > 0 ? todayW : Array(5).fill(null)).map((w, i) => (React.createElement("div", { key: i, style: Object.assign({ aspectRatio: 1, borderRadius: 8, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", fontSize: ".66rem", fontFamily: "monospace", padding: 5, gap: 2, border: "1.5px solid" }, (w == null ? { borderColor: "#30363d", background: "#161b22", color: "#8b949e", opacity: .3 } : prog[w.id] ? { borderColor: "#22c55e44", background: "#0d2a0d", color: "#22c55e" } : { borderColor: "#c9903a77", background: "#1a1208", color: "#f0c040" })) }, React.createElement("span", null, w == null ? "—" : prog[w.id] ? "✓" : "✦"), w && React.createElement("span", { style: { fontSize: ".38rem", opacity: .7, lineHeight: 1.2, wordBreak: "break-all", textAlign: "center" } }, w.word.length > 8 ? w.word.slice(0, 7) + "…" : w.word))))), React.createElement("button", { className: "btn btn-purple", style: { width: "100%" }, onClick: startLearn, disabled: todayDone || todayW.length === 0 }, todayDone ? "✓ 今日單字已完成" : "⚡ 開始學習今日 5 字")), React.createElement("div", { style: { display: "flex", gap: 5, marginBottom: 11 } }, ["全部", "高中", "托福"].map(t => (React.createElement("button", { key: t, className: `filt ${tagFilter === t ? “on” : “”}`, onClick: () => setTagFilter(t) }, t === "全部" ? "全部" : t === "高中" ? "高中7000" : "托福")))), React.createElement("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 7, marginBottom: 11 } }, [[learned, "已學習"], [mastered, "⚡精熟"], [dueCount, "待複習"], [ALL_WORDS.filter(w => { var _a; return (((_a = prog[w.id]) === null || _a === void 0 ? void 0 : _a.incorrect) || 0) > 0; }).length, "錯題"]].map(([v, l]) => (React.createElement("div", { key: l, style: { background: "#161b22", border: "1px solid #30363d", borderRadius: 10, padding: 11, textAlign: "center" } }, React.createElement("div", { style: { fontFamily: "'Cinzel',serif", fontSize: "1.3rem", fontWeight: 700, color: "#f0c040" } }, v), React.createElement("div", { style: { fontFamily: "monospace", fontSize: ".52rem", color: "#8b949e", textTransform: "uppercase", letterSpacing: ".05em", marginTop: 1 } }, l))))), React.createElement("div", { style: { display: "flex", gap: 7, marginBottom: 11 } }, React.createElement("button", { className: "btn btn-gold", style: { flex: 1 }, onClick: startReview, disabled: dueCount === 0 }, dueCount > 0 ? `📖 複習(${dueCount})`: "✓ 已複習"), React.createElement("button", { className: "btn btn-red-soft", style: { flex: 1 }, onClick: () => { const ws = shuffled(ALL_WORDS.filter(w => { var _a; return (((_a = prog[w.id]) === null || _a === void 0 ? void 0 : _a.incorrect) || 0) > 0; })); if (!ws.length) return; setWrQueue(ws); setWrIdx(0); setWrFlip(false); setScreen("wrongReview"); }, disabled: ALL_WORDS.filter(w => { var _a; return (((_a = prog[w.id]) === null || _a === void 0 ? void 0 : _a.incorrect) || 0) > 0; }).length === 0 }, "\u2717 \u932F\u984C\u8907\u7FD2")), React.createElement("button", { className: "btn", style: { width: "100%", marginBottom: 11, background: "linear-gradient(135deg,#0f3a2e,#082a1e)", border: "1px solid #22c55e44", color: "#22c55e", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, }, onClick: startScramble }, React.createElement("span", { style: { fontSize: "1.1rem" } }, "\uD83E\uDDE9"), React.createElement("span", null, "\u4F8B\u53E5\u91CD\u7D44\u904A\u6232"), React.createElement("span", { style: { fontFamily: "monospace", fontSize: ".6rem", color: "#22c55e88", marginLeft: 2 } }, learned > 0 ?`${Math.min(learned, 5)} 題`: "先背幾個字再來挑戰")), React.createElement("div", { style: { background: "#161b22", border: "1px solid #30363d", borderRadius: 12, padding: 14, marginBottom: 11 } }, React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 } }, React.createElement("div", { style: { fontFamily: "monospace", fontSize: ".56rem", letterSpacing: ".1em", textTransform: "uppercase", color: "#7c3aed" } }, "\uD83D\uDCDA \u5C0F\u8AAA\u89E3\u9396\u9032\u5EA6"), React.createElement("button", { style: { background: "none", border: "none", fontFamily: "monospace", fontSize: ".6rem", color: "#a78bfa", cursor: "pointer" }, onClick: () => setScreen("library") }, "\u5168\u90E8 \u2192")), NOVELS.slice(0, 2).map(n => React.createElement(NovelCard, { key: n.id, novel: n, mastered: mastered, onRead: () => { setActiveNovel(n); setScreen("novel"); } }))), React.createElement("div", { style: { background: "#161b22", border: "1px solid #30363d", borderRadius: 12, padding: 14 } }, React.createElement("div", { style: { fontFamily: "monospace", fontSize: ".56rem", letterSpacing: ".1em", textTransform: "uppercase", color: "#7c3aed", marginBottom: 8 } }, "\u827E\u8CD3\u8C6A\u65AF\u8907\u7FD2\u9593\u9694"), React.createElement("div", { style: { display: "flex", gap: 4, flexWrap: "wrap" } }, ["隔天", "2天", "4天", "7天", "15天", "1月", "2月", "4月"].map((d, i) => (React.createElement("span", { key: i, style: { fontFamily: "monospace", fontSize: ".54rem", padding: "2px 6px", borderRadius: 3, background: i === 0 ? "#7c3aed22" : "#21262d", border:`1px solid ${i === 0 ? “#7c3aed44” : “#30363d”}`, color: i === 0 ? "#a78bfa" : "#8b949e" } }, "\u00D7", i + 1, " ", d))))))), screen === "cards" && curCard && (React.createElement(React.Fragment, null, React.createElement("div", { className: "phdr" }, React.createElement("button", { className: "back", onClick: () => setScreen("home") }, "\u2190 \u8FD4\u56DE"), React.createElement("span", { className: "ptag purple" }, "\uD83D\uDC41 \u55AE\u5B57\u5361"), React.createElement("div", { style: { display: "flex", gap: 4, alignItems: "center" } }, queue.map((w, i) => React.createElement("div", { key: i, style: { width: 7, height: 7, borderRadius: "50%", transition: "all .25s", background: i === cIdx ? "#f0c040" : seen.has(w.id) ? "#22c55e" : "#30363d", boxShadow: i === cIdx ? "0 0 6px #f0c04099" : seen.has(w.id) ? "0 0 4px #22c55e66" : "none" } }))), React.createElement("span", { style: { marginLeft: "auto", fontFamily: "monospace", fontSize: ".66rem", color: "#8b949e" } }, cIdx + 1, "/", queue.length)), React.createElement("div", { style: { height: 3, background: "#21262d", borderRadius: 2, marginBottom: 12, overflow: "hidden" } }, React.createElement("div", { style: { height: "100%", borderRadius: 2, transition: "width .4s ease", background: "linear-gradient(90deg,#22c55e,#f0c040)", width: `${(seen.size / queue.length) * 100}%`} })), React.createElement(FlashCard, { card: curCard, flipped: flipped, onFlip: () => setFlipped(f => !f), onSwipe: onSwipe, isFirst: cIdx === 0 && seen.size <= 1 }), React.createElement("div", { style: { display: "flex", gap: 7, marginBottom: 11 } }, React.createElement("button", { className: "btn btn-ghost", style: { flex: 1 }, onClick: () => onSwipe(-1), disabled: cIdx === 0 }, "\u2190 \u4E0A\u4E00\u5F35"), React.createElement("button", { className: "btn btn-ghost", style: { flex: 1 }, onClick: () => onSwipe(+1), disabled: cIdx === queue.length - 1 }, "\u4E0B\u4E00\u5F35 \u2192")), allSeen ? React.createElement("button", { className: "btn btn-gold", style: { width: "100%" }, onClick: startSpell }, "\uD83D\uDD13 \u5168\u90E8\u770B\u5B8C\uFF01\u958B\u59CB\u9ED8\u5BEB \u2192") : React.createElement("div", { style: { textAlign: "center", fontFamily: "monospace", fontSize: ".6rem", color: "#3d4a5a", padding: 11, border: "1px dashed #21262d", borderRadius: 12 } }, "\uD83D\uDD12 \u770B\u5B8C\u5168\u90E8 ", queue.length, " \u5F35\u5F8C\u89E3\u9396\u9ED8\u5BEB ", React.createElement("span", { style: { color: "#f0c040", marginLeft: 6 } }, seen.size, "/", queue.length)))), screen === "spell" && spellCard && (React.createElement(React.Fragment, null, React.createElement("div", { className: "phdr" }, React.createElement("button", { className: "back", onClick: () => setScreen("cards") }, "\u2190 \u56DE\u55AE\u5B57\u5361"), React.createElement("span", { className: "ptag green" }, "\u270D \u9ED8\u5BEB\u6311\u6230"), combo >= 2 && React.createElement("span", { className: "combo" }, "\uD83D\uDD25 \u00D7", combo), React.createElement("span", { style: { marginLeft: "auto", fontFamily: "monospace", fontSize: ".66rem", color: "#8b949e" } }, sIdx + 1, "/", queue.length)), React.createElement("div", { style: { display: "flex", gap: 6, justifyContent: "center", marginBottom: 14 } }, queue.map((w, i) => { const done = spellCorrectSet.current.has(w.id); const active = i === sIdx; return (React.createElement("div", { key: i, style: Object.assign({ width: 28, height: 28, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: ".75rem", fontWeight: 700, transition: "all .3s" }, (done ? { background: "linear-gradient(135deg,#22c55e,#16a34a)", color: "#fff", boxShadow: "0 0 8px #22c55e66" } : active ? { background: "#1a1a2e", border: "2px solid #7c3aed", color: "#a78bfa", boxShadow: "0 0 8px #7c3aed55" } : { background: "#161b22", border: "2px solid #21262d", color: "#2a3545" })) }, done ? "✓" : i + 1)); })), React.createElement("div", { style: { fontFamily: "monospace", fontSize: ".56rem", color: "#3d4a5a", textAlign: "center", marginBottom: 14, letterSpacing: ".04em" } }, "5 \u984C\u5168\u5C0D\u624D\u7B97\u5B8C\u6210 \u00B7 \u7B54\u932F\u53EF\u91CD\u8A66"), React.createElement("div", { style: { background: "#161b22", border: "1px solid #30363d", borderRadius: 20, padding: 24, marginBottom: 14, textAlign: "center" } }, React.createElement("div", { style: { fontFamily: "monospace", fontSize: ".56rem", letterSpacing: ".12em", textTransform: "uppercase", color: "#7c3aed", marginBottom: 11 } }, "\u6839\u64DA\u4E2D\u6587\u610F\u601D\uFF0C\u9ED8\u5BEB\u82F1\u6587\u55AE\u5B57"), React.createElement("div", { style: { fontFamily: "Georgia,serif", fontSize: "1.5rem", fontWeight: 600, color: "#f0c040", marginBottom: 3 } }, spellCard.meaning), React.createElement("div", { style: { fontFamily: "monospace", fontSize: ".64rem", color: "#8b949e", marginBottom: 14 } }, spellCard.pos, " \u00B7 ", spellCard.phonetic), React.createElement("div", { style: { background: "#0d1117", borderRadius: 10, padding: "11px 13px", marginBottom: 16, border: "1px solid #21262d" } }, React.createElement("div", { style: { fontFamily: "Georgia,serif", fontStyle: "italic", fontSize: ".84rem", color: "#8b949e", lineHeight: 1.7, marginBottom: 8 } }, "\u300C", spellCard.example.replace(new RegExp(spellCard.word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "gi"), ch => "＿".repeat(ch.length)), "\u300D"), React.createElement("div", { style: { fontFamily: "Georgia,serif", fontSize: ".74rem", color: "#5a6a7a", lineHeight: 1.55, marginBottom: 10, textAlign: "left", paddingLeft: 6, borderLeft: "2px solid #2a3545" } }, spellCard.exTrans), React.createElement("div", { style: { display: "flex", gap: 7, justifyContent: "center", flexWrap: "wrap" } }, React.createElement(SpeakBtn, { text: spellCard.word, mode: "word", label: "\uD83D\uDD0A \u55AE\u5B57" }), React.createElement(SpeakBtn, { text: spellCard.example, mode: "sentence", label: "\uD83C\uDF99 \u4F8B\u53E5" }))), React.createElement("div", { style: { display: "flex", justifyContent: "center", gap: 4, flexWrap: "wrap", marginBottom: 14 } }, spellCard.word.split("").map((ch, i) => { const typed = input[i] || ""; const base = { width: 30, height: 38, borderRadius: 6, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Cinzel',serif", fontSize: ".84rem", fontWeight: 700, transition: "all .2s", border: "1.5px solid" }; const st = spellRes === "correct" ? Object.assign(Object.assign({}, base), { background: "#0d2a0d", borderColor: "#22c55e", color: "#22c55e" }) : spellRes === "wrong" ? Object.assign(Object.assign({}, base), { background: "#2a0d0d", borderColor: "#ef4444", color: "#ef4444" }) : typed ? Object.assign(Object.assign({}, base), { background: "#1a1a2e", borderColor: "#7c3aed", color: "#a78bfa" }) : Object.assign(Object.assign({}, base), { background: "#21262d", borderColor: "#30363d", color: "#e6edf3" }); return React.createElement("div", { key: i, style: st }, spellRes ? ch : typed); })), React.createElement("input", { ref: inputRef, style: { width: "100%", background: spellRes === "correct" ? "#0d2a0d" : spellRes === "wrong" ? "#2a0d0d" : "#21262d", border:`2px solid ${spellRes === “correct” ? “#22c55e” : spellRes === “wrong” ? “#ef4444” : “#30363d”}`, borderRadius: 12, padding: "13px 15px", fontFamily: "'Cinzel',serif", fontSize: "1.15rem", color: "#e6edf3", textAlign: "center", letterSpacing: ".08em", outline: "none" }, value: input, onChange: e => !spellRes && setInput(e.target.value), onKeyDown: e => e.key === "Enter" && submitSpell(), placeholder: "\u8F38\u5165\u82F1\u6587\uFF0C\u6309 Enter\u2026", disabled: !!spellRes, autoComplete: "off", autoCorrect: "off", spellCheck: false }), spellRes && React.createElement("div", { style: { marginTop: 11, fontFamily: "monospace", fontSize: ".78rem", color: spellRes === "correct" ? "#22c55e" : "#ef4444", lineHeight: 1.6 } }, spellRes === "correct" ? React.createElement(React.Fragment, null, React.createElement("span", null, "\u2713 \u6B63\u78BA\uFF01"), combo >= 3 && React.createElement(React.Fragment, null, " \uD83D\uDD25 \u00D7", combo), React.createElement("span", { style: { color: "#a78bfa", marginLeft: 6 } }, "+", XP_OK + (combo >= 3 ? XP_BONUS : 0), " XP")) : React.createElement(React.Fragment, null, React.createElement("span", null, "\u2717 \u6B63\u78BA\u7B54\u6848\uFF1A"), React.createElement("b", { style: { fontFamily: "'Cinzel',serif", fontSize: ".95rem", color: "#22c55e", marginLeft: 5 } }, spellCard.word)))), !spellRes && (React.createElement("button", { className: "btn btn-purple", style: { width: "100%" }, onClick: submitSpell }, "\u78BA\u8A8D\u7B54\u6848")), spellRes === "correct" && (React.createElement("button", { className: "btn btn-purple", style: { width: "100%" }, onClick: advanceSpell }, sIdx + 1 < queue.length ? "下一個 →" : "查看結果 →")), spellRes === "wrong" && (React.createElement("div", { style: { display: "flex", gap: 9 } }, React.createElement("button", { className: "btn", style: { flex: 1, background: "#1a1208", border: "1.5px solid #c9903a55", color: "#c9903a", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }, onClick: retrySpell }, "\uD83D\uDD04 \u518D\u8A66\u4E00\u6B21"), React.createElement("button", { className: "btn btn-ghost", style: { flex: 1 }, onClick: advanceSpell }, sIdx + 1 < queue.length ? "跳過 →" : "查看結果 →"))))), screen === "wrongReview" && wrCard && (() => { const res = wrSpellRes; return (React.createElement(React.Fragment, null, React.createElement("div", { className: "phdr" }, React.createElement("button", { className: "back", onClick: () => setScreen("home") }, "\u2190 \u8FD4\u56DE"), React.createElement("span", { className: "ptag red" }, "\u2717 \u932F\u984C\u8907\u7FD2"), React.createElement("span", { style: { marginLeft: "auto", fontFamily: "monospace", fontSize: ".66rem", color: "#8b949e" } }, wrIdx + 1, "/", wrQueue.length)), React.createElement(SpellCard, { card: wrCard, input: wrInput, setInput: setWrInput, spellRes: res, inputRef: wrInputRef, onSubmit: wrongSubmit, onRetry: wrongRetry, onSkip: wrongSkip, accentColor: "#ef4444", isLast: wrIdx + 1 >= wrQueue.length }), !res && (React.createElement("button", { className: "btn btn-purple", style: { width: "100%" }, onClick: wrongSubmit }, "\u78BA\u8A8D\u7B54\u6848")), res === "correct" && (React.createElement("button", { className: "btn btn-purple", style: { width: "100%" }, onClick: wrongSubmit }, wrIdx + 1 < wrQueue.length ? "下一個 →" : "查看結果 →")), res === "wrong" && (React.createElement("div", { style: { display: "flex", gap: 9 } }, React.createElement("button", { className: "btn", style: { flex: 1, background: "#1a1208", border: "1.5px solid #c9903a55", color: "#c9903a", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }, onClick: wrongRetry }, "\uD83D\uDD04 \u518D\u8A66\u4E00\u6B21"), React.createElement("button", { className: "btn btn-ghost", style: { flex: 1 }, onClick: wrongSkip }, wrIdx + 1 < wrQueue.length ? "跳過 →" : "查看結果 →"))))); })(), screen === "review" && revCard && (() => { return (React.createElement(React.Fragment, null, React.createElement("div", { className: "phdr" }, React.createElement("button", { className: "back", onClick: () => setScreen("home") }, "\u2190 \u8FD4\u56DE"), React.createElement("span", { className: "ptag purple" }, "\uD83D\uDCD6 \u827E\u8CD3\u8C6A\u65AF\u8907\u7FD2"), combo >= 2 && React.createElement("span", { className: "combo" }, "\uD83D\uDD25 \u00D7", combo), React.createElement("span", { style: { marginLeft: "auto", fontFamily: "monospace", fontSize: ".66rem", color: "#8b949e" } }, rIdx + 1, "/", rQueue.length)), React.createElement(SpellCard, { card: revCard, input: rInput, setInput: setRInput, spellRes: rSpellRes, inputRef: rInputRef, onSubmit: reviewSubmit, onRetry: reviewRetry, onSkip: reviewSkip, isLast: rIdx + 1 >= rQueue.length }), !rSpellRes && (React.createElement("button", { className: "btn btn-purple", style: { width: "100%" }, onClick: reviewSubmit }, "\u78BA\u8A8D\u7B54\u6848")), rSpellRes === "correct" && (React.createElement("button", { className: "btn btn-purple", style: { width: "100%" }, onClick: reviewSubmit }, rIdx + 1 < rQueue.length ? "下一個 →" : "查看結果 →")), rSpellRes === "wrong" && (React.createElement("div", { style: { display: "flex", gap: 9 } }, React.createElement("button", { className: "btn", style: { flex: 1, background: "#1a1208", border: "1.5px solid #c9903a55", color: "#c9903a", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }, onClick: reviewRetry }, "\uD83D\uDD04 \u518D\u8A66\u4E00\u6B21"), React.createElement("button", { className: "btn btn-ghost", style: { flex: 1 }, onClick: reviewSkip }, rIdx + 1 < rQueue.length ? "跳過 →" : "查看結果 →"))))); })(), screen === "scramble" && scQueue[scIdx] && (() => { const card = scQueue[scIdx]; const correct = tokenize(card.example); const allPlaced = scAnswer.length === correct.length; return (React.createElement(React.Fragment, null, React.createElement("div", { className: "phdr" }, React.createElement("button", { className: "back", onClick: () => setScreen("home") }, "\u2190 \u8FD4\u56DE"), React.createElement("span", { className: "ptag green" }, "\uD83E\uDDE9 \u4F8B\u53E5\u91CD\u7D44"), scCombo >= 2 && React.createElement("span", { className: "combo" }, "\uD83D\uDD25 \u00D7", scCombo), React.createElement("span", { style: { marginLeft: "auto", fontFamily: "monospace", fontSize: ".66rem", color: "#8b949e" } }, scIdx + 1, "/", scQueue.length)), React.createElement("div", { style: { height: 3, background: "#21262d", borderRadius: 2, marginBottom: 16, overflow: "hidden" } }, React.createElement("div", { style: { height: "100%", borderRadius: 2, background: "linear-gradient(90deg,#22c55e,#f0c040)", width: `${(scIdx / scQueue.length) * 100}%`, transition: "width .4s ease" } })), React.createElement("div", { style: { background: "linear-gradient(135deg,#1c1033,#0d1117)", border: "1px solid #3d2e6b", borderRadius: 16, padding: "18px 20px", marginBottom: 14 } }, React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8, marginBottom: 10 } }, React.createElement("span", { style: Object.assign({ fontFamily: "monospace", fontSize: ".56rem", padding: "2px 8px", borderRadius: 20 }, (card.tag === "高中" ? { background: "#1a2a1a", border: "1px solid #22c55e44", color: "#22c55e" } : { background: "#1a1a2e", border: "1px solid #7c3aed44", color: "#a78bfa" })) }, card.tag === "高中" ? "📗 高中" : "🎓 托福"), React.createElement(SpeakBtn, { text: card.example, mode: "sentence", label: "\uD83C\uDF99 \u807D\u4F8B\u53E5" })), React.createElement("div", { style: { fontFamily: "'Cinzel',serif", fontSize: "1.6rem", fontWeight: 900, color: "#f0c040", marginBottom: 4, letterSpacing: ".03em" } }, card.word), React.createElement("div", { style: { fontFamily: "monospace", fontSize: ".66rem", color: "#8b949e", marginBottom: 6 } }, card.phonetic, " \u00B7 ", card.pos), React.createElement("div", { style: { fontFamily: "Georgia,serif", fontSize: ".8rem", color: "#6a7a8a", lineHeight: 1.55, paddingLeft: 7, borderLeft: "2px solid #2a3545" } }, card.exTrans)), React.createElement("div", { style: { background: "#0d1117", border: `2px solid ${scResult === “correct” ? “#22c55e” : scResult === “wrong” ? “#ef4444” : “#21262d”}`, borderRadius: 16, padding: "14px 14px", marginBottom: 10, minHeight: 68, display: "flex", flexWrap: "wrap", gap: 6, alignItems: "flex-start", transition: "border-color .3s", position: "relative" } }, scAnswer.length === 0 && !scResult && (React.createElement("div", { style: { fontFamily: "monospace", fontSize: ".6rem", color: "#2a3545", position: "absolute", top: "50%", left: "50%", transform: "translate(-50%,-50%)", whiteSpace: "nowrap" } }, "\u9EDE\u64CA\u4E0B\u65B9\u55AE\u8A5E\u586B\u5165\u6B64\u8655")), scAnswer.map((tok, i) => (React.createElement("div", { key: tok.id, onClick: () => { if (scResult) return; // tap placed token to remove it const removed = scAnswer[i]; setScAnswer(a => a.filter((_, j) => j !== i)); setScTokens(ts => ts.map(t => t.id === removed.id ? Object.assign(Object.assign({}, t), { used: false }) : t)); }, style: { background: scResult === "correct" ? "linear-gradient(135deg,#0d2a0d,#0a1e0a)" : scResult === "wrong" ? "#2a0d0d" : "linear-gradient(135deg,#1a1a2e,#12112a)", border: `1.5px solid ${scResult === “correct” ? “#22c55e” : scResult === “wrong” ? “#ef4444” : “#7c3aed66”}`, borderRadius: 8, padding: "6px 12px", fontFamily: "Georgia,serif", fontSize: ".88rem", color: scResult === "correct" ? "#22c55e" : scResult === "wrong" ? "#ef4444" : "#c8d0da", cursor: scResult ? "default" : "pointer", userSelect: "none", transition: "all .15s", animation: scResult ? "none" : undefined, } }, tok.word)))), scResult && (React.createElement("div", { style: { textAlign: "center", marginBottom: 12, fontFamily: "monospace", fontSize: ".82rem", color: scResult === "correct" ? "#22c55e" : "#ef4444", lineHeight: 1.7 } }, scResult === "correct" ? React.createElement(React.Fragment, null, "\u2713 \u5B8C\u7F8E\uFF01", scCombo >= 3 && React.createElement(React.Fragment, null, " \uD83D\uDD25 \u00D7", scCombo), React.createElement("span", { style: { color: "#a78bfa", marginLeft: 6 } }, "+", XP_OK + (scCombo >= 3 ? XP_BONUS : 0), " XP")) : React.createElement("span", null, "\u2717 \u6B63\u78BA\u9806\u5E8F\u662F\uFF1A"), scResult === "wrong" && (React.createElement("div", { style: { fontFamily: "Georgia,serif", fontStyle: "italic", fontSize: ".84rem", color: "#8b949e", marginTop: 6, background: "#161b22", borderRadius: 10, padding: "10px 14px", border: "1px solid #30363d", textAlign: "left", lineHeight: 1.7 } }, React.createElement(Hl, { s: card.example, w: card.word }))))), !scResult && (React.createElement("div", { style: { display: "flex", flexWrap: "wrap", gap: 7, marginBottom: 14, background: "#161b22", borderRadius: 14, padding: "14px 12px", border: "1px solid #30363d" } }, scTokens.map(tok => (React.createElement("div", { key: tok.id, onClick: () => scTapToken(tok), style: { background: tok.used ? "#21262d" : "linear-gradient(135deg,#1a2a1a,#0f1e0f)", border: `1.5px solid ${tok.used ? “#21262d” : “#22c55e55”}`, borderRadius: 8, padding: "7px 13px", fontFamily: "Georgia,serif", fontSize: ".9rem", color: tok.used ? "#2a3545" : "#c8d0da", cursor: tok.used ? "default" : "pointer", userSelect: "none", transition: "all .2s", textDecoration: tok.used ? "line-through" : "none", opacity: tok.used ? .4 : 1, } }, tok.word))))), !scResult ? (React.createElement("div", { style: { display: "flex", gap: 8, marginBottom: 8 } }, React.createElement("button", { className: "btn btn-ghost", style: { flex: 1 }, onClick: scRemoveLast, disabled: !scAnswer.length }, "\u232B \u522A\u9664"), React.createElement("button", { className: "btn btn-ghost", style: { flex: 1 }, onClick: scClear, disabled: !scAnswer.length }, "\u2715 \u6E05\u7A7A"), React.createElement("button", { className: "btn btn-purple", style: { flex: 2 }, onClick: submitScramble, disabled: !allPlaced }, "\u78BA\u8A8D\u7B54\u6848"))) : (React.createElement("button", { className: "btn btn-purple", style: { width: "100%" }, onClick: submitScramble }, scIdx + 1 < scQueue.length ? "下一題 →" : "查看結果 →")), React.createElement("div", { style: { fontFamily: "monospace", fontSize: ".54rem", color: "#2a3545", textAlign: "center", marginTop: 8 } }, correct.length, " \u500B\u55AE\u8A5E \u00B7 \u9EDE\u64CA\u5DF2\u586B\u5165\u7684\u8A5E\u53EF\u79FB\u9664"))); })(), screen === "done" && (() => { const fromScramble = scOk + scBad > 0 && sOk + sBad === 0; const dOk = fromScramble ? scOk : sOk; const dBad = fromScramble ? scBad : sBad; const dXP = fromScramble ? scXP : sXP; const dCombo = fromScramble ? scMaxCombo : maxCombo; const dStars = dOk >= 5 ? 3 : dOk >= 3 ? 2 : 1; const dLabel = fromScramble ? "🧩 重組" : "✍ 默寫"; // For spell: check if all 5 were correctly answered const spellPassed = fromScramble ? null : queue.every(w => spellCorrectSet.current.has(w.id)); return (React.createElement(React.Fragment, null, justUnlocked && React.createElement("div", { style: { background: "linear-gradient(135deg,#1c1033,#0f0a1e)", border: "2px solid #7c3aed", borderRadius: 20, padding: "28px 24px", textAlign: "center", marginBottom: 14, boxShadow: "0 0 40px rgba(124,58,237,.4)" } }, React.createElement("div", { style: { fontSize: "2.6rem", marginBottom: 8 } }, "\uD83C\uDF89"), React.createElement("div", { style: { fontFamily: "'Cinzel',serif", fontSize: "1rem", fontWeight: 900, color: "#f0c040", marginBottom: 5 } }, "\u65B0\u7AE0\u7BC0\u89E3\u9396\uFF01"), React.createElement("div", { style: { fontFamily: "'Cinzel',serif", fontSize: "1.2rem", color: "#a78bfa", marginBottom: 14 } }, justUnlocked.emoji, " ", justUnlocked.title), React.createElement("button", { className: "btn btn-purple", onClick: () => { setActiveNovel(justUnlocked); setJustUnlocked(null); setScreen("novel"); } }, "\u7ACB\u5373\u95B1\u8B80 \uD83D\uDCD6"), React.createElement("button", { style: { display: "block", margin: "8px auto 0", background: "none", border: "none", fontFamily: "monospace", fontSize: ".64rem", color: "#8b949e", cursor: "pointer" }, onClick: () => setJustUnlocked(null) }, "\u7A0D\u5F8C\u518D\u8B80")), React.createElement("div", { style: { background: "#161b22", border: "1px solid #30363d", borderRadius: 20, padding: "36px 26px", textAlign: "center" } }, React.createElement("div", { style: { fontFamily: "monospace", fontSize: ".56rem", color: "#8b949e", letterSpacing: ".1em", textTransform: "uppercase", marginBottom: 10 } }, dLabel, " \u7D50\u679C"), !fromScramble && (React.createElement("div", { style: { marginBottom: 14, padding: "10px 16px", borderRadius: 12, background: spellPassed ? "#0d2a0d" : "#1a0808", border: `1px solid ${spellPassed ? “#22c55e44” : “#ef444444”}`, fontFamily: "monospace", fontSize: ".72rem", color: spellPassed ? "#22c55e" : "#ef4444" } }, spellPassed ? "🎉 5 題全對！打卡成功，繼續保持！" : `⚠️ 還有 ${queue.length - dOk} 題未完成，繼續加油！`)), React.createElement("div", { style: { fontSize: "2.2rem", letterSpacing: 4, marginBottom: 12 } }, "⭐".repeat(dStars)), React.createElement("div", { style: { fontFamily: "'Cinzel',serif", fontSize: "1.6rem", fontWeight: 900, color: "#f0c040", marginBottom: 6 } }, dOk > dBad ? "Excellent!" : "Keep Going!"), React.createElement("div", { style: { fontFamily: "monospace", fontSize: "1.9rem", fontWeight: 700, color: "#7c3aed", marginBottom: 2 } }, "+", dXP), React.createElement("div", { style: { fontFamily: "monospace", fontSize: ".56rem", color: "#8b949e", textTransform: "uppercase", letterSpacing: ".1em", marginBottom: 18 } }, "XP \u7372\u5F97"), React.createElement("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 7, marginBottom: 18 } }, [[dOk, "#22c55e", "正確"], [dBad, "#ef4444", "錯誤"], [dCombo, "#a78bfa", "連勝"]].map(([v, c, l]) => (React.createElement("div", { key: l, style: { background: "#21262d", borderRadius: 9, padding: 11 } }, React.createElement("div", { style: { fontFamily: "'Cinzel',serif", fontSize: "1.35rem", fontWeight: 700, color: c, marginBottom: 2 } }, v), React.createElement("div", { style: { fontFamily: "monospace", fontSize: ".52rem", color: "#8b949e", textTransform: "uppercase" } }, l))))), !fromScramble && !spellPassed && (React.createElement("button", { className: "btn btn-gold", style: { width: "100%", marginBottom: 9 }, onClick: startSpell }, "\uD83D\uDD04 \u91CD\u65B0\u6311\u6230\u9ED8\u5BEB")), !fromScramble && wrongIds.size > 0 && (React.createElement("button", { className: "btn btn-red-soft", style: { width: "100%", marginBottom: 9 }, onClick: startWrongReview }, "\u2717 \u8907\u7FD2\u932F\u8AA4\u55AE\u5B57 (", wrongIds.size, ")")), React.createElement("button", { className: "btn btn-purple", style: { width: "100%", marginBottom: 7 }, onClick: () => setScreen("home") }, "\u56DE\u9996\u9801"), React.createElement("button", { className: "btn btn-ghost", style: { width: "100%" }, onClick: () => setScreen("library") }, "\uD83D\uDCDA \u66F8\u5EAB")))); })(), screen === "library" && (React.createElement(React.Fragment, null, React.createElement("div", { style: { fontFamily: "'Cinzel',serif", fontSize: "1.2rem", fontWeight: 900, color: "#f0c040", marginBottom: 3 } }, "\uD83D\uDCDA \u9B54\u6CD5\u66F8\u5EAB"), React.createElement("div", { style: { fontFamily: "Georgia,serif", fontSize: ".8rem", color: "#8b949e", marginBottom: 16 } }, "\u7CBE\u719F\u55AE\u5B57\u89E3\u9396\u54C8\u5229\u6CE2\u7279\u539F\u6587\u7AE0\u7BC0\uFF01"), React.createElement("div", { style: { background: "#161b22", border: "1px solid #30363d", borderRadius: 12, padding: "14px 18px", marginBottom: 14 } }, React.createElement("div", { style: { display: "flex", justifyContent: "space-between", marginBottom: 7 } }, React.createElement("span", { style: { fontFamily: "monospace", fontSize: ".56rem", letterSpacing: ".1em", textTransform: "uppercase", color: "#7c3aed" } }, "\u7CBE\u719F\u9032\u5EA6"), React.createElement("span", { style: { fontFamily: "monospace", fontSize: ".7rem", color: "#f0c040", fontWeight: 700 } }, mastered, " / ", ALL_WORDS.length)), React.createElement("div", { style: { height: 5, background: "#21262d", borderRadius: 3, overflow: "hidden" } }, React.createElement("div", { style: { height: "100%", width: `${Math.round(mastered / ALL_WORDS.length * 100)}%`, background: "linear-gradient(90deg,#7c3aed,#f0c040)", borderRadius: 3 } }))), NOVELS.map(n => React.createElement(NovelCard, { key: n.id, novel: n, mastered: mastered, onRead: () => { setActiveNovel(n); setScreen("novel"); } })), React.createElement("div", { style: { fontFamily: "monospace", fontSize: ".58rem", color: "#3d4a5a", textAlign: "center", marginTop: 10 } }, "\uD83D\uDCA1 \u7CBE\u719F = \u8A18\u61B6\u7B49\u7D1A Lv.3\uFF08\u9ED8\u5BEB\u9023\u7E8C\u6B63\u78BA 3 \u6B21\uFF09"))), screen === "novel" && activeNovel && (React.createElement(React.Fragment, null, React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8, marginBottom: 18 } }, React.createElement("button", { className: "back", onClick: () => setScreen("library") }, "\u2190 \u66F8\u5EAB"), React.createElement("div", { style: { fontFamily: "monospace", fontSize: ".56rem", letterSpacing: ".08em", textTransform: "uppercase", color: "#7c3aed" } }, "\u539F\u6587\u95B1\u8B80")), React.createElement("div", { style: { background: "linear-gradient(160deg,#1c1033,#0f0a1e)", border: "1px solid #3d2e6b", borderRadius: 20, padding: "28px 24px" } }, React.createElement("div", { style: { fontSize: "2rem", textAlign: "center", marginBottom: 12 } }, activeNovel.emoji), React.createElement("div", { style: { fontFamily: "'Cinzel',serif", fontSize: "1.05rem", fontWeight: 900, color: "#f0c040", textAlign: "center", marginBottom: 3, lineHeight: 1.3 } }, activeNovel.title), React.createElement("div", { style: { fontFamily: "monospace", fontSize: ".56rem", color: "#7c3aed", letterSpacing: ".08em", textAlign: "center", marginBottom: 20 } }, activeNovel.subtitle), React.createElement("div", { style: { height: 1, background: "#3d2e6b", marginBottom: 20 } }), React.createElement("div", { style: { fontFamily: "Georgia,serif", fontSize: ".98rem", color: "#c8d0da", lineHeight: 1.95, whiteSpace: "pre-wrap" } }, activeNovel.excerpt)), React.createElement("div", { style: { textAlign: "center", marginTop: 14 } }, React.createElement("button", { className: "btn btn-purple", onClick: () => setScreen("home") }, "\u7E7C\u7E8C\u80CC\u55AE\u5B57 \u2192")))), screen === "stats" && (() => { const ap = data.progress || {}; const tc = ALL_WORDS.reduce((s, w) => { var _a; return s + (((_a = ap[w.id]) === null || _a === void 0 ? void 0 : _a.correct) || 0); }, 0); const ti = ALL_WORDS.reduce((s, w) => { var _a; return s + (((_a = ap[w.id]) === null || _a === void 0 ? void 0 : _a.incorrect) || 0); }, 0); const acc = (tc + ti) > 0 ? Math.round(tc / (tc + ti) * 100) : 0; const lc = EBBINGHAUS.map((_, l) => ALL_WORDS.filter(w => { var _a; return (((_a = ap[w.id]) === null || _a === void 0 ? void 0 : _a.level) || 0) === l && ap[w.id]; }).length); const ml = Math.max(...lc, 1); const ww = ALL_WORDS.filter(w => { var _a; return (((_a = ap[w.id]) === null || _a === void 0 ? void 0 : _a.incorrect) || 0) > 0; }).sort((a, b) => { var _a, _b; return (((_a = ap[b.id]) === null || _a === void 0 ? void 0 : _a.incorrect) || 0) - (((_b = ap[a.id]) === null || _b === void 0 ? void 0 : _b.incorrect) || 0); }); return (React.createElement(React.Fragment, null, React.createElement("div", { style: { fontFamily: "monospace", fontSize: ".58rem", letterSpacing: ".12em", textTransform: "uppercase", color: "#7c3aed", marginBottom: 13 } }, "\u5B78\u7FD2\u7D71\u8A08"), React.createElement("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 7, marginBottom: 16 } }, [[learned, "已學習"], [mastered, "⚡精熟"], [acc + "%", "答對率"]].map(([v, l]) => (React.createElement("div", { key: l, style: { background: "#161b22", border: "1px solid #30363d", borderRadius: 10, padding: 11, textAlign: "center" } }, React.createElement("div", { style: { fontFamily: "'Cinzel',serif", fontSize: "1.35rem", fontWeight: 700, color: "#f0c040" } }, v), React.createElement("div", { style: { fontFamily: "monospace", fontSize: ".52rem", color: "#8b949e", textTransform: "uppercase", letterSpacing: ".05em", marginTop: 1 } }, l))))), ["高中", "托福"].map(tag => { const ws = ALL_WORDS.filter(w => w.tag === tag); const ln = ws.filter(w => { var _a; return ((_a = ap[w.id]) === null || _a === void 0 ? void 0 : _a.level) > 0; }).length; return (React.createElement("div", { key: tag, style: { background: "#161b22", border: "1px solid #30363d", borderRadius: 10, padding: "13px 17px", marginBottom: 7 } }, React.createElement("div", { style: { display: "flex", justifyContent: "space-between", marginBottom: 5 } }, React.createElement("span", { style: { fontFamily: "Georgia,serif", fontWeight: 600, fontSize: ".9rem" } }, tag === "高中" ? "高中 7000 單" : "托福核心"), React.createElement("span", { style: { fontFamily: "monospace", fontSize: ".64rem", color: "#8b949e" } }, ln, "/", ws.length)), React.createElement("div", { style: { height: 4, background: "#21262d", borderRadius: 2, overflow: "hidden" } }, React.createElement("div", { style: { height: "100%", width: `${Math.round(ln / ws.length * 100)}%`, background: “linear-gradient(90deg,#7c3aed,#f0c040)”, borderRadius: 2 } }))));
-}),
-React.createElement(“div”, { style: { fontFamily: “monospace”, fontSize: “.56rem”, letterSpacing: “.1em”, textTransform: “uppercase”, color: “#7c3aed”, margin: “16px 0 9px” } }, “\u8A18\u61B6\u7B49\u7D1A\u5206\u4F48”),
-React.createElement(“div”, { style: { display: “flex”, gap: 5, alignItems: “flex-end”, height: 68, marginBottom: 22 } }, EBBINGHAUS.map((_, l) => (React.createElement(“div”, { key: l, style: { flex: 1, display: “flex”, flexDirection: “column”, alignItems: “center”, gap: 3 } },
-React.createElement(“div”, { style: { width: “100%”, height: lc[l] > 0 ? Math.max(7, Math.round(lc[l] / ml * 56)) : 3, background: lc[l] > 0 ? “linear-gradient(to top,#7c3aed,#f0c040)” : “#21262d”, borderRadius: “3px 3px 0 0”, transition: “height .5s” } }),
-React.createElement(“div”, { style: { fontFamily: “monospace”, fontSize: “.46rem”, color: “#8b949e” } }, [“1d”, “2d”, “4d”, “7d”, “15d”, “1m”, “2m”, “4m”][l]))))),
-ww.length > 0 && React.createElement(React.Fragment, null,
-React.createElement(“div”, { style: { fontFamily: “monospace”, fontSize: “.56rem”, letterSpacing: “.1em”, textTransform: “uppercase”, color: “#ef4444”, marginBottom: 8 } }, “\u932F\u8AA4\u6B21\u6578\u6700\u591A”),
-React.createElement(“div”, { style: { background: “#161b22”, border: “1px solid #30363d”, borderRadius: 11, overflow: “hidden”, marginBottom: 13 } }, ww.slice(0, 5).map((w, i) => {
-var _a;
-return (React.createElement(“div”, { key: w.id, style: { display: “flex”, alignItems: “center”, gap: 9, padding: “9px 14px”, borderBottom: i < 4 ? “1px solid #21262d” : “none” } },
-React.createElement(“span”, { style: { fontFamily: “‘Cinzel’,serif”, fontSize: “.86rem”, fontWeight: 700, color: “#f0c040”, minWidth: 100 } }, w.word),
-React.createElement(“span”, { style: { fontFamily: “Georgia,serif”, fontSize: “.75rem”, color: “#8b949e”, flex: 1 } }, w.meaning),
-React.createElement(“span”, { style: { fontFamily: “monospace”, fontSize: “.58rem”, color: “#ef4444”, whiteSpace: “nowrap” } },
-“\u2717”, (_a = ap[w.id]) === null || _a === void 0 ? void 0 :
-_a.incorrect)));
-})),
-React.createElement(“button”, { className: “btn btn-red-soft”, style: { width: “100%”, marginBottom: 11 }, onClick: () => { setWrQueue(shuffled(ww)); setWrIdx(0); setWrFlip(false); setScreen(“wrongReview”); } }, “\u2717 \u958B\u59CB\u932F\u984C\u8907\u7FD2”)),
-React.createElement(“button”, { style: { background: “none”, border: “1px solid #30363d”, borderRadius: 8, padding: “6px 13px”, color: “#8b949e”, cursor: “pointer”, fontFamily: “monospace”, fontSize: “.66rem” }, onClick: () => { if (confirm(“確定清除？”))
-upd(() => ({})); } }, “\u91CD\u7F6E\u9032\u5EA6”)));
-})())));
+`;
+function App() {
+    const [data, setData] = useState(load);
+    const [screen, setScreen] = useState("home");
+    const [tagFilter, setTagFilter] = useState("全部");
+    const [queue, setQueue] = useState([]);
+    const [cIdx, setCIdx] = useState(0);
+    const [seen, setSeen] = useState(new Set());
+    const [flipped, setFlipped] = useState(false);
+    const [sIdx, setSIdx] = useState(0);
+    const [input, setInput] = useState("");
+    const [spellRes, setSpellRes] = useState(null);
+    const inputRef = useRef(null);
+    // Ebbinghaus review
+    const [rQueue, setRQueue] = useState([]);
+    const [rIdx, setRIdx] = useState(0);
+    const [rFlip, setRFlip] = useState(false);
+    const [rInput, setRInput] = useState("");
+    const [rSpellRes, setRSpellRes] = useState(null); // null | "correct" | "wrong"
+    const rInputRef = useRef(null);
+    // Wrong review
+    const [wrQueue, setWrQueue] = useState([]);
+    const [wrIdx, setWrIdx] = useState(0);
+    const [wrFlip, setWrFlip] = useState(false);
+    const [wrInput, setWrInput] = useState("");
+    const [wrSpellRes, setWrSpellRes] = useState(null);
+    const wrInputRef = useRef(null);
+    const [sXP, setSXP] = useState(0);
+    const [combo, setCombo] = useState(0);
+    const [maxCombo, setMaxCombo] = useState(0);
+    const [sOk, setSOk] = useState(0);
+    const [sBad, setSBad] = useState(0);
+    const [wrongIds, setWrongIds] = useState(new Set());
+    const [activeNovel, setActiveNovel] = useState(null);
+    const [justUnlocked, setJustUnlocked] = useState(null);
+    // Scramble game state
+    const [scQueue, setScQueue] = useState([]); // words for this scramble session
+    const [scIdx, setScIdx] = useState(0);
+    const [scTokens, setScTokens] = useState([]); // [{id, word, used}]
+    const [scAnswer, setScAnswer] = useState([]); // [{id, word}]
+    const [scResult, setScResult] = useState(null); // null | "correct" | "wrong"
+    const [scXP, setScXP] = useState(0);
+    const [scCombo, setScCombo] = useState(0);
+    const [scMaxCombo, setScMaxCombo] = useState(0);
+    const [scOk, setScOk] = useState(0);
+    const [scBad, setScBad] = useState(0);
+    const upd = useCallback(fn => setData(p => { const n = fn(p); save(n); return n; }), []);
+    // Preload voices so first playback doesn't stutter
+    useEffect(() => {
+        if (!window.speechSynthesis)
+            return;
+        window.speechSynthesis.getVoices();
+        window.speechSynthesis.onvoiceschanged = () => { _voice = null; pickVoice(); };
+    }, []);
+    const getWords = useCallback(tag => tag === "全部" ? ALL_WORDS : ALL_WORDS.filter(w => w.tag === tag), []);
+    const getTodayWords = useCallback(() => {
+        var _a;
+        const today = new Date().toDateString();
+        if (data.lastDate === today && ((_a = data.dailyIds) === null || _a === void 0 ? void 0 : _a.length))
+            return data.dailyIds.map(id => ALL_WORDS.find(w => w.id === id)).filter(Boolean);
+        return shuffled(getWords(tagFilter).filter(w => !(data.progress || {})[w.id])).slice(0, WORDS_PER_DAY);
+    }, [data, tagFilter, getWords]);
+    const startLearn = useCallback(() => {
+        var _a;
+        const today = new Date().toDateString();
+        let words, ids;
+        if (data.lastDate === today && ((_a = data.dailyIds) === null || _a === void 0 ? void 0 : _a.length)) {
+            ids = data.dailyIds;
+            words = ids.map(id => ALL_WORDS.find(w => w.id === id)).filter(Boolean);
+        }
+        else {
+            words = shuffled(getWords(tagFilter).filter(w => !(data.progress || {})[w.id])).slice(0, WORDS_PER_DAY);
+            ids = words.map(w => w.id);
+            upd(d => (Object.assign(Object.assign({}, d), { lastDate: today, dailyIds: ids })));
+        }
+        if (!words.length)
+            return;
+        setQueue(words);
+        setCIdx(0);
+        setSeen(new Set([words[0].id]));
+        setFlipped(false);
+        setSXP(0);
+        setCombo(0);
+        setMaxCombo(0);
+        setSOk(0);
+        setSBad(0);
+        setWrongIds(new Set());
+        setScreen("cards");
+    }, [data, tagFilter, getWords, upd]);
+    const onSwipe = useCallback((dir) => {
+        const next = cIdx + dir;
+        if (next < 0 || next >= queue.length)
+            return;
+        setCIdx(next);
+        setFlipped(false);
+        setSeen(s => { const ns = new Set(s); ns.add(queue[next].id); return ns; });
+    }, [cIdx, queue]);
+    const allSeen = queue.length > 0 && queue.every(w => seen.has(w.id));
+    const startSpell = () => {
+        setSIdx(0);
+        setInput("");
+        setSpellRes(null);
+        setCombo(0);
+        setWrongIds(new Set());
+        setSOk(0);
+        setSBad(0);
+        setSXP(0);
+        setMaxCombo(0);
+        spellCorrectSet.current = new Set();
+        setScreen("spell");
+        setTimeout(() => { var _a; return (_a = inputRef.current) === null || _a === void 0 ? void 0 : _a.focus(); }, 150);
+    };
+    // Track whether each card in the queue has been answered correctly
+    const spellCorrectSet = useRef(new Set());
+    const prevMastered = useRef(0);
+    const retrySpell = () => {
+        // Reset just this card's input, keep score intact
+        setInput("");
+        setSpellRes(null);
+        setTimeout(() => { var _a; return (_a = inputRef.current) === null || _a === void 0 ? void 0 : _a.focus(); }, 100);
+    };
+    const advanceSpell = () => {
+        if (sIdx + 1 < queue.length) {
+            setSIdx(i => i + 1);
+            setInput("");
+            setSpellRes(null);
+            setTimeout(() => { var _a; return (_a = inputRef.current) === null || _a === void 0 ? void 0 : _a.focus(); }, 100);
+        }
+        else {
+            // Only succeed if every card was answered correctly at least once
+            const allCorrect = queue.every(w => spellCorrectSet.current.has(w.id));
+            if (allCorrect) {
+                const todayStr = new Date().toDateString();
+                upd(d => {
+                    const prev = d.checkedDates || [];
+                    return Object.assign(Object.assign({}, d), { checkedDates: prev.includes(todayStr) ? prev : [...prev, todayStr] });
+                });
+                const nm = ALL_WORDS.filter(w => { var _a; return ((_a = (data.progress || {})[w.id]) === null || _a === void 0 ? void 0 : _a.level) >= 3; }).length;
+                const ul = NOVELS.find(n => n.need <= nm && n.need > prevMastered.current);
+                if (ul)
+                    setJustUnlocked(ul);
+            }
+            setScreen("done");
+        }
+    };
+    const submitSpell = () => {
+        if (spellRes) {
+            advanceSpell();
+            return;
+        }
+        const card = queue[sIdx];
+        const ok = input.trim().toLowerCase() === card.word.toLowerCase();
+        setSpellRes(ok ? "correct" : "wrong");
+        const nc = ok ? combo + 1 : 0;
+        setCombo(nc);
+        setMaxCombo(m => Math.max(m, nc));
+        const earned = ok ? XP_OK + (nc >= 3 ? XP_BONUS : 0) : 0;
+        if (ok) {
+            setSOk(c => c + 1);
+            spellCorrectSet.current.add(card.id);
+        }
+        else {
+            setSBad(c => c + 1);
+            setWrongIds(s => { const ns = new Set(s); ns.add(card.id); return ns; });
+        }
+        setSXP(x => x + earned);
+        upd(d => {
+            const prev = (d.progress || {})[card.id] || { level: 0, correct: 0, incorrect: 0 };
+            const nl = ok ? Math.min(prev.level + 1, EBBINGHAUS.length - 1) : Math.max(0, prev.level - 1);
+            prevMastered.current = ALL_WORDS.filter(w => { var _a; return ((_a = (d.progress || {})[w.id]) === null || _a === void 0 ? void 0 : _a.level) >= 3; }).length;
+            return Object.assign(Object.assign({}, d), { xp: (d.xp || 0) + earned, progress: Object.assign(Object.assign({}, d.progress), { [card.id]: Object.assign(Object.assign({}, prev), { level: nl, correct: prev.correct + (ok ? 1 : 0), incorrect: prev.incorrect + (ok ? 0 : 1), lastReview: new Date().toISOString(), nextReview: nextReview(nl) }) }) });
+        });
+    };
+    const startWrongReview = () => {
+        const words = [...wrongIds].map(id => ALL_WORDS.find(w => w.id === id)).filter(Boolean);
+        if (!words.length)
+            return;
+        setWrQueue(shuffled(words));
+        setWrIdx(0);
+        setWrInput("");
+        setWrSpellRes(null);
+        setScreen("wrongReview");
+        setTimeout(() => { var _a; return (_a = wrInputRef.current) === null || _a === void 0 ? void 0 : _a.focus(); }, 150);
+    };
+    const wrongRetry = () => { setWrInput(""); setWrSpellRes(null); setTimeout(() => { var _a; return (_a = wrInputRef.current) === null || _a === void 0 ? void 0 : _a.focus(); }, 100); };
+    const wrongSubmit = () => {
+        if (wrSpellRes) {
+            if (wrSpellRes === "wrong") {
+                wrongRetry();
+                return;
+            } // retry stays on same card
+            // correct → advance
+            if (wrIdx + 1 < wrQueue.length) {
+                setWrIdx(i => i + 1);
+                setWrInput("");
+                setWrSpellRes(null);
+                setTimeout(() => { var _a; return (_a = wrInputRef.current) === null || _a === void 0 ? void 0 : _a.focus(); }, 100);
+            }
+            else
+                setScreen("done");
+            return;
+        }
+        const card = wrQueue[wrIdx];
+        const ok = wrInput.trim().toLowerCase() === card.word.toLowerCase();
+        setWrSpellRes(ok ? "correct" : "wrong");
+        upd(d => {
+            const prev = (d.progress || {})[card.id] || { level: 0, correct: 0, incorrect: 0 };
+            const nl = ok ? Math.min(prev.level + 1, EBBINGHAUS.length - 1) : Math.max(0, prev.level - 1);
+            return Object.assign(Object.assign({}, d), { progress: Object.assign(Object.assign({}, d.progress), { [card.id]: Object.assign(Object.assign({}, prev), { level: nl, correct: prev.correct + (ok ? 1 : 0), incorrect: prev.incorrect + (ok ? 0 : 1), lastReview: new Date().toISOString(), nextReview: nextReview(nl) }) }) });
+        });
+    };
+    const wrongSkip = () => {
+        if (wrIdx + 1 < wrQueue.length) {
+            setWrIdx(i => i + 1);
+            setWrInput("");
+            setWrSpellRes(null);
+            setTimeout(() => { var _a; return (_a = wrInputRef.current) === null || _a === void 0 ? void 0 : _a.focus(); }, 100);
+        }
+        else
+            setScreen("done");
+    };
+    const startReview = () => {
+        const prog = data.progress || {};
+        const words = shuffled(getWords(tagFilter).filter(w => isDue(prog[w.id])));
+        if (!words.length)
+            return;
+        setRQueue(words);
+        setRIdx(0);
+        setRInput("");
+        setRSpellRes(null);
+        setSXP(0);
+        setCombo(0);
+        setMaxCombo(0);
+        setSOk(0);
+        setSBad(0);
+        setWrongIds(new Set());
+        setScreen("review");
+        setTimeout(() => { var _a; return (_a = rInputRef.current) === null || _a === void 0 ? void 0 : _a.focus(); }, 150);
+    };
+    const reviewRetry = () => { setRInput(""); setRSpellRes(null); setTimeout(() => { var _a; return (_a = rInputRef.current) === null || _a === void 0 ? void 0 : _a.focus(); }, 100); };
+    const reviewSubmit = () => {
+        if (rSpellRes) {
+            if (rSpellRes === "wrong") {
+                reviewRetry();
+                return;
+            }
+            // correct → advance
+            if (rIdx + 1 < rQueue.length) {
+                setRIdx(i => i + 1);
+                setRInput("");
+                setRSpellRes(null);
+                setTimeout(() => { var _a; return (_a = rInputRef.current) === null || _a === void 0 ? void 0 : _a.focus(); }, 100);
+            }
+            else
+                setScreen("done");
+            return;
+        }
+        const card = rQueue[rIdx];
+        const ok = rInput.trim().toLowerCase() === card.word.toLowerCase();
+        setRSpellRes(ok ? "correct" : "wrong");
+        const nc = ok ? combo + 1 : 0;
+        setCombo(nc);
+        setMaxCombo(m => Math.max(m, nc));
+        const earned = ok ? XP_OK + (nc >= 3 ? XP_BONUS : 0) : 0;
+        if (ok)
+            setSOk(c => c + 1);
+        else {
+            setSBad(c => c + 1);
+            setWrongIds(s => { const ns = new Set(s); ns.add(card.id); return ns; });
+        }
+        setSXP(x => x + earned);
+        upd(d => {
+            const prev = (d.progress || {})[card.id] || { level: 0, correct: 0, incorrect: 0 };
+            const nl = ok ? Math.min(prev.level + 1, EBBINGHAUS.length - 1) : Math.max(0, prev.level - 1);
+            return Object.assign(Object.assign({}, d), { xp: (d.xp || 0) + earned, progress: Object.assign(Object.assign({}, d.progress), { [card.id]: Object.assign(Object.assign({}, prev), { level: nl, correct: prev.correct + (ok ? 1 : 0), incorrect: prev.incorrect + (ok ? 0 : 1), lastReview: new Date().toISOString(), nextReview: nextReview(nl) }) }) });
+        });
+    };
+    const reviewSkip = () => {
+        setSBad(c => c + 1);
+        setWrongIds(s => { const ns = new Set(s); ns.add(rQueue[rIdx].id); return ns; });
+        if (rIdx + 1 < rQueue.length) {
+            setRIdx(i => i + 1);
+            setRInput("");
+            setRSpellRes(null);
+            setTimeout(() => { var _a; return (_a = rInputRef.current) === null || _a === void 0 ? void 0 : _a.focus(); }, 100);
+        }
+        else
+            setScreen("done");
+    };
+    // ── Scramble game helpers ──
+    function tokenize(sentence) {
+        // Split sentence into word tokens, preserving punctuation attached to words
+        return sentence.match(/[\w']+[.,!?—;:]?/g) || sentence.split(" ");
+    }
+    function makeScTokens(sentence) {
+        return shuffled(tokenize(sentence).map((w, i) => ({ id: i, word: w, used: false })));
+    }
+    const startScramble = () => {
+        // Pick all words that have been learned (have progress), shuffle them
+        const pool = shuffled(ALL_WORDS.filter(w => (data.progress || {})[w.id]));
+        const picks = pool.length >= 5 ? pool.slice(0, 5) : shuffled(ALL_WORDS).slice(0, 5);
+        const tokens = makeScTokens(picks[0].example);
+        setScQueue(picks);
+        setScIdx(0);
+        setScTokens(tokens);
+        setScAnswer([]);
+        setScResult(null);
+        setScXP(0);
+        setScCombo(0);
+        setScMaxCombo(0);
+        setScOk(0);
+        setScBad(0);
+        setScreen("scramble");
+    };
+    const scTapToken = (tok) => {
+        if (scResult || tok.used)
+            return;
+        setScTokens(ts => ts.map(t => t.id === tok.id ? Object.assign(Object.assign({}, t), { used: true }) : t));
+        setScAnswer(a => [...a, { id: tok.id, word: tok.word }]);
+    };
+    const scRemoveLast = () => {
+        if (scResult || !scAnswer.length)
+            return;
+        const last = scAnswer[scAnswer.length - 1];
+        setScAnswer(a => a.slice(0, -1));
+        setScTokens(ts => ts.map(t => t.id === last.id ? Object.assign(Object.assign({}, t), { used: false }) : t));
+    };
+    const scClear = () => {
+        if (scResult)
+            return;
+        setScAnswer([]);
+        setScTokens(ts => ts.map(t => (Object.assign(Object.assign({}, t), { used: false }))));
+    };
+    const submitScramble = () => {
+        if (scResult) {
+            if (scIdx + 1 < scQueue.length) {
+                const next = scIdx + 1;
+                setScIdx(next);
+                setScTokens(makeScTokens(scQueue[next].example));
+                setScAnswer([]);
+                setScResult(null);
+            }
+            else {
+                setScreen("done");
+            }
+            return;
+        }
+        const card = scQueue[scIdx];
+        const correct = tokenize(card.example);
+        const attempt = scAnswer.map(a => a.word);
+        // Allow if all tokens placed and match
+        const ok = attempt.length === correct.length &&
+            attempt.every((w, i) => w.toLowerCase() === correct[i].toLowerCase());
+        setScResult(ok ? "correct" : "wrong");
+        const nc = ok ? scCombo + 1 : 0;
+        setScCombo(nc);
+        setScMaxCombo(m => Math.max(m, nc));
+        const earned = ok ? XP_OK + (nc >= 3 ? XP_BONUS : 0) : 0;
+        if (ok)
+            setScOk(c => c + 1);
+        else
+            setScBad(c => c + 1);
+        setScXP(x => x + earned);
+        upd(d => {
+            const prev = (d.progress || {})[card.id] || { level: 0, correct: 0, incorrect: 0 };
+            const nl = ok ? Math.min(prev.level + 1, EBBINGHAUS.length - 1) : Math.max(0, prev.level - 1);
+            return Object.assign(Object.assign({}, d), { xp: (d.xp || 0) + earned, progress: Object.assign(Object.assign({}, d.progress), { [card.id]: Object.assign(Object.assign({}, prev), { level: nl, correct: prev.correct + (ok ? 1 : 0), incorrect: prev.incorrect + (ok ? 0 : 1), lastReview: new Date().toISOString(), nextReview: nextReview(nl) }) }) });
+        });
+    };
+    function ReviewCard({ card, flipped, setFlipped, borderColor = "#30363d", accentColor = "#ef4444" }) {
+        const ts = card.tag === "高中" ? { background: "#1a2a1a", border: "1px solid #22c55e44", color: "#22c55e" } : { background: "#1a1a2e", border: "1px solid #7c3aed44", color: "#a78bfa" };
+        return (React.createElement("div", { style: { perspective: 1100, marginBottom: 14, cursor: "pointer" }, onClick: () => !flipped && setFlipped(true) },
+            React.createElement("div", { style: { width: "100%", minHeight: 340, position: "relative", transformStyle: "preserve-3d",
+                    transform: `rotateY(${flipped ? 180 : 0}deg)`, transition: "transform .5s cubic-bezier(.4,0,.2,1)", borderRadius: 20 } },
+                React.createElement("div", { style: { position: "absolute", inset: 0, backfaceVisibility: "hidden", WebkitBackfaceVisibility: "hidden",
+                        borderRadius: 20, background: "#161b22", border: `1px solid ${borderColor}`,
+                        display: "flex", flexDirection: "column", padding: "22px 20px" } },
+                    React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 } },
+                        React.createElement("div", { style: Object.assign({ fontFamily: "monospace", fontSize: ".56rem", padding: "2px 8px", borderRadius: 20 }, ts) },
+                            card.tag === "高中" ? "📗" : "🎓",
+                            " ",
+                            card.tag),
+                        !flipped && React.createElement("span", { style: { fontFamily: "monospace", fontSize: ".52rem", color: "#2a3545" } }, "\u9EDE\u64CA\u7FFB\u9762")),
+                    React.createElement("div", { style: { display: "flex", alignItems: "flex-end", gap: 8, marginBottom: 4 } },
+                        React.createElement("div", { style: { fontFamily: "'Cinzel',serif", fontSize: "2.2rem", fontWeight: 900, color: accentColor, lineHeight: 1 } }, card.word),
+                        React.createElement(SpeakBtn, { text: card.word, mode: "word", label: "\uD83D\uDD0A", style: { marginBottom: 3 } })),
+                    React.createElement("div", { style: { fontFamily: "monospace", fontSize: ".66rem", color: "#8b949e", marginBottom: 3 } }, card.phonetic),
+                    React.createElement("div", { style: { fontFamily: "monospace", fontSize: ".6rem", color: "#c9903a", marginBottom: 12 } }, card.pos),
+                    React.createElement("div", { style: { height: 1, background: "#21262d", marginBottom: 12 } }),
+                    React.createElement("div", { style: { fontFamily: "Georgia,serif", fontStyle: "italic", fontSize: ".85rem", color: "#a0aab4", lineHeight: 1.7, marginBottom: 6 } },
+                        React.createElement(Hl, { s: card.example, w: card.word })),
+                    React.createElement(SpeakBtn, { text: card.example, mode: "sentence", label: "\uD83C\uDF99 \u6717\u8B80\u4F8B\u53E5", style: { marginBottom: 8 } }),
+                    React.createElement("div", { style: { fontFamily: "Georgia,serif", fontSize: ".75rem", color: "#5a6a7a", lineHeight: 1.55,
+                            paddingLeft: 7, borderLeft: "2px solid #2a3545" } }, card.exTrans)),
+                React.createElement("div", { style: { position: "absolute", inset: 0, backfaceVisibility: "hidden", WebkitBackfaceVisibility: "hidden",
+                        borderRadius: 20, background: "linear-gradient(160deg,#1c1033,#0f0a1e)", border: "1px solid #3d2e6b",
+                        transform: "rotateY(180deg)", display: "flex", flexDirection: "column", alignItems: "center",
+                        justifyContent: "center", textAlign: "center", padding: "32px 26px" } },
+                    React.createElement("div", { style: { fontFamily: "Georgia,serif", fontSize: "1.9rem", fontWeight: 700, color: "#f0c040", lineHeight: 1.3, marginBottom: 10 } }, card.meaning),
+                    React.createElement("div", { style: { fontFamily: "monospace", fontSize: ".68rem", color: "#c9903a", marginBottom: 16 } }, card.pos),
+                    React.createElement("div", { style: { display: "flex", gap: 8, justifyContent: "center", marginBottom: 4 } },
+                        React.createElement(SpeakBtn, { text: card.word, mode: "word", label: "\uD83D\uDD0A \u55AE\u5B57" }),
+                        React.createElement(SpeakBtn, { text: card.example, mode: "sentence", label: "\uD83C\uDF99 \u4F8B\u53E5" }))))));
+    }
+    const prog = data.progress || {};
+    const xp = data.xp || 0;
+    const checkedDates = data.checkedDates || [];
+    const streak = calcStreak(checkedDates);
+    const todayW = getTodayWords();
+    const dueCount = ALL_WORDS.filter(w => isDue(prog[w.id])).length;
+    const learned = ALL_WORDS.filter(w => { var _a; return ((_a = prog[w.id]) === null || _a === void 0 ? void 0 : _a.level) > 0; }).length;
+    const mastered = ALL_WORDS.filter(w => { var _a; return (((_a = prog[w.id]) === null || _a === void 0 ? void 0 : _a.level) || 0) >= 3; }).length;
+    const todayDone = todayW.length > 0 && todayW.every(w => prog[w.id]);
+    const curCard = queue[cIdx], spellCard = queue[sIdx], revCard = rQueue[rIdx], wrCard = wrQueue[wrIdx];
+    return (React.createElement("div", { style: { minHeight: "100vh", background: "#0d1117", color: "#e6edf3", fontFamily: "Georgia,serif", display: "flex", flexDirection: "column", alignItems: "center" } },
+        React.createElement("style", null, CSS),
+        React.createElement("div", { style: { width: "100%", maxWidth: 700, padding: "16px 16px 0", display: "flex", alignItems: "center", gap: 8 } },
+            React.createElement("div", null,
+                React.createElement("div", { style: { fontFamily: "'Cinzel',serif", fontSize: "1.15rem", fontWeight: 900, color: "#f0c040", letterSpacing: ".05em" } }, "\u26A1 WizWord"),
+                React.createElement("div", { style: { fontFamily: "monospace", fontSize: ".5rem", color: "#8b949e", letterSpacing: ".08em", textTransform: "uppercase" } }, "Ebbinghaus \u00B7 Harry Potter")),
+            React.createElement("div", { style: { marginLeft: "auto", display: "flex", gap: 4 } },
+                React.createElement("button", { className: `pill ${screen !== "stats" && screen !== "library" && screen !== "novel" ? "on" : ""}`, onClick: () => setScreen("home") }, "\u9996\u9801"),
+                React.createElement("button", { className: `pill ${screen === "library" || screen === "novel" ? "on" : ""}`, onClick: () => setScreen("library") }, "\uD83D\uDCDA"),
+                React.createElement("button", { className: `pill ${screen === "stats" ? "on" : ""}`, onClick: () => setScreen("stats") }, "\u7D71\u8A08"))),
+        React.createElement("div", { style: { width: "100%", maxWidth: 700, padding: "8px 16px 0", display: "flex", alignItems: "center", gap: 7 } },
+            React.createElement("span", { className: "badge" },
+                "Lv.",
+                getLvl(xp)),
+            React.createElement("div", { style: { flex: 1, height: 5, background: "#21262d", borderRadius: 3, overflow: "hidden" } },
+                React.createElement("div", { style: { height: "100%", width: `${getXpRem(xp)}%`, background: "linear-gradient(90deg,#7c3aed,#f0c040)", borderRadius: 3, transition: "width .5s" } })),
+            React.createElement("span", { style: { fontFamily: "monospace", fontSize: ".56rem", color: "#8b949e", whiteSpace: "nowrap" } },
+                getXpRem(xp),
+                "/",
+                XP_LVL),
+            streak > 0 && React.createElement("span", { className: "badge" },
+                "\uD83D\uDD25",
+                streak),
+            React.createElement("span", { className: "badge", style: { color: "#a78bfa" } },
+                "\u26A1",
+                mastered)),
+        React.createElement("div", { style: { width: "100%", maxWidth: 700, padding: "18px 16px 60px" } },
+            screen === "home" && (React.createElement(React.Fragment, null,
+                React.createElement(StreakCard, { streak: streak, checkedDates: checkedDates, todayDone: todayDone }),
+                React.createElement("div", { style: { background: "linear-gradient(135deg,#1c1033,#0d1117)", border: "1px solid #3d2e6b", borderRadius: 16, padding: 24, marginBottom: 14, position: "relative", overflow: "hidden" } },
+                    React.createElement("div", { style: { position: "absolute", right: 16, top: 12, fontSize: "2.6rem", opacity: .06, pointerEvents: "none" } }, "\u26A1"),
+                    React.createElement("div", { style: { fontFamily: "monospace", fontSize: ".56rem", letterSpacing: ".12em", textTransform: "uppercase", color: "#7c3aed", marginBottom: 7 } }, "\u4ECA\u65E5\u4EFB\u52D9"),
+                    React.createElement("div", { style: { fontFamily: "'Cinzel',serif", fontSize: "1.25rem", fontWeight: 900, color: "#f0c040", marginBottom: 3 } }, "\u6BCF\u65E5 5 \u500B\u9B54\u6CD5\u55AE\u5B57"),
+                    React.createElement("div", { style: { fontFamily: "Georgia,serif", fontSize: ".8rem", color: "#8b949e", marginBottom: 16 } }, "\u5DE6\u53F3\u6ED1\u52D5 \u00B7 \u82F1\u6587\u4F8B\u53E5\uFF0B\u4E2D\u6587\u7FFB\u8B6F \u00B7 \u9ED8\u5BEB\u6311\u6230"),
+                    React.createElement("div", { style: { display: "grid", gridTemplateColumns: "repeat(5,1fr)", gap: 6, marginBottom: 16 } }, (todayW.length > 0 ? todayW : Array(5).fill(null)).map((w, i) => (React.createElement("div", { key: i, style: Object.assign({ aspectRatio: 1, borderRadius: 8, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", fontSize: ".66rem", fontFamily: "monospace", padding: 5, gap: 2, border: "1.5px solid" }, (w == null ? { borderColor: "#30363d", background: "#161b22", color: "#8b949e", opacity: .3 } : prog[w.id] ? { borderColor: "#22c55e44", background: "#0d2a0d", color: "#22c55e" } : { borderColor: "#c9903a77", background: "#1a1208", color: "#f0c040" })) },
+                        React.createElement("span", null, w == null ? "—" : prog[w.id] ? "✓" : "✦"),
+                        w && React.createElement("span", { style: { fontSize: ".38rem", opacity: .7, lineHeight: 1.2, wordBreak: "break-all", textAlign: "center" } }, w.word.length > 8 ? w.word.slice(0, 7) + "…" : w.word))))),
+                    React.createElement("button", { className: "btn btn-purple", style: { width: "100%" }, onClick: startLearn, disabled: todayDone || todayW.length === 0 }, todayDone ? "✓ 今日單字已完成" : "⚡ 開始學習今日 5 字")),
+                React.createElement("div", { style: { display: "flex", gap: 5, marginBottom: 11 } }, ["全部", "高中", "托福"].map(t => (React.createElement("button", { key: t, className: `filt ${tagFilter === t ? "on" : ""}`, onClick: () => setTagFilter(t) }, t === "全部" ? "全部" : t === "高中" ? "高中7000" : "托福")))),
+                React.createElement("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 7, marginBottom: 11 } }, [[learned, "已學習"], [mastered, "⚡精熟"], [dueCount, "待複習"], [ALL_WORDS.filter(w => { var _a; return (((_a = prog[w.id]) === null || _a === void 0 ? void 0 : _a.incorrect) || 0) > 0; }).length, "錯題"]].map(([v, l]) => (React.createElement("div", { key: l, style: { background: "#161b22", border: "1px solid #30363d", borderRadius: 10, padding: 11, textAlign: "center" } },
+                    React.createElement("div", { style: { fontFamily: "'Cinzel',serif", fontSize: "1.3rem", fontWeight: 700, color: "#f0c040" } }, v),
+                    React.createElement("div", { style: { fontFamily: "monospace", fontSize: ".52rem", color: "#8b949e", textTransform: "uppercase", letterSpacing: ".05em", marginTop: 1 } }, l))))),
+                React.createElement("div", { style: { display: "flex", gap: 7, marginBottom: 11 } },
+                    React.createElement("button", { className: "btn btn-gold", style: { flex: 1 }, onClick: startReview, disabled: dueCount === 0 }, dueCount > 0 ? `📖 複習(${dueCount})` : "✓ 已複習"),
+                    React.createElement("button", { className: "btn btn-red-soft", style: { flex: 1 }, onClick: () => {
+                            const ws = shuffled(ALL_WORDS.filter(w => { var _a; return (((_a = prog[w.id]) === null || _a === void 0 ? void 0 : _a.incorrect) || 0) > 0; }));
+                            if (!ws.length)
+                                return;
+                            setWrQueue(ws);
+                            setWrIdx(0);
+                            setWrFlip(false);
+                            setScreen("wrongReview");
+                        }, disabled: ALL_WORDS.filter(w => { var _a; return (((_a = prog[w.id]) === null || _a === void 0 ? void 0 : _a.incorrect) || 0) > 0; }).length === 0 }, "\u2717 \u932F\u984C\u8907\u7FD2")),
+                React.createElement("button", { className: "btn", style: {
+                        width: "100%", marginBottom: 11,
+                        background: "linear-gradient(135deg,#0f3a2e,#082a1e)",
+                        border: "1px solid #22c55e44", color: "#22c55e",
+                        display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+                    }, onClick: startScramble },
+                    React.createElement("span", { style: { fontSize: "1.1rem" } }, "\uD83E\uDDE9"),
+                    React.createElement("span", null, "\u4F8B\u53E5\u91CD\u7D44\u904A\u6232"),
+                    React.createElement("span", { style: { fontFamily: "monospace", fontSize: ".6rem", color: "#22c55e88", marginLeft: 2 } }, learned > 0 ? `${Math.min(learned, 5)} 題` : "先背幾個字再來挑戰")),
+                React.createElement("div", { style: { background: "#161b22", border: "1px solid #30363d", borderRadius: 12, padding: 14, marginBottom: 11 } },
+                    React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 } },
+                        React.createElement("div", { style: { fontFamily: "monospace", fontSize: ".56rem", letterSpacing: ".1em", textTransform: "uppercase", color: "#7c3aed" } }, "\uD83D\uDCDA \u5C0F\u8AAA\u89E3\u9396\u9032\u5EA6"),
+                        React.createElement("button", { style: { background: "none", border: "none", fontFamily: "monospace", fontSize: ".6rem", color: "#a78bfa", cursor: "pointer" }, onClick: () => setScreen("library") }, "\u5168\u90E8 \u2192")),
+                    NOVELS.slice(0, 2).map(n => React.createElement(NovelCard, { key: n.id, novel: n, mastered: mastered, onRead: () => { setActiveNovel(n); setScreen("novel"); } }))),
+                React.createElement("div", { style: { background: "#161b22", border: "1px solid #30363d", borderRadius: 12, padding: 14 } },
+                    React.createElement("div", { style: { fontFamily: "monospace", fontSize: ".56rem", letterSpacing: ".1em", textTransform: "uppercase", color: "#7c3aed", marginBottom: 8 } }, "\u827E\u8CD3\u8C6A\u65AF\u8907\u7FD2\u9593\u9694"),
+                    React.createElement("div", { style: { display: "flex", gap: 4, flexWrap: "wrap" } }, ["隔天", "2天", "4天", "7天", "15天", "1月", "2月", "4月"].map((d, i) => (React.createElement("span", { key: i, style: { fontFamily: "monospace", fontSize: ".54rem", padding: "2px 6px", borderRadius: 3, background: i === 0 ? "#7c3aed22" : "#21262d", border: `1px solid ${i === 0 ? "#7c3aed44" : "#30363d"}`, color: i === 0 ? "#a78bfa" : "#8b949e" } },
+                        "\u00D7",
+                        i + 1,
+                        " ",
+                        d))))))),
+            screen === "cards" && curCard && (React.createElement(React.Fragment, null,
+                React.createElement("div", { className: "phdr" },
+                    React.createElement("button", { className: "back", onClick: () => setScreen("home") }, "\u2190 \u8FD4\u56DE"),
+                    React.createElement("span", { className: "ptag purple" }, "\uD83D\uDC41 \u55AE\u5B57\u5361"),
+                    React.createElement("div", { style: { display: "flex", gap: 4, alignItems: "center" } }, queue.map((w, i) => React.createElement("div", { key: i, style: { width: 7, height: 7, borderRadius: "50%", transition: "all .25s", background: i === cIdx ? "#f0c040" : seen.has(w.id) ? "#22c55e" : "#30363d", boxShadow: i === cIdx ? "0 0 6px #f0c04099" : seen.has(w.id) ? "0 0 4px #22c55e66" : "none" } }))),
+                    React.createElement("span", { style: { marginLeft: "auto", fontFamily: "monospace", fontSize: ".66rem", color: "#8b949e" } },
+                        cIdx + 1,
+                        "/",
+                        queue.length)),
+                React.createElement("div", { style: { height: 3, background: "#21262d", borderRadius: 2, marginBottom: 12, overflow: "hidden" } },
+                    React.createElement("div", { style: { height: "100%", borderRadius: 2, transition: "width .4s ease", background: "linear-gradient(90deg,#22c55e,#f0c040)", width: `${(seen.size / queue.length) * 100}%` } })),
+                React.createElement(FlashCard, { card: curCard, flipped: flipped, onFlip: () => setFlipped(f => !f), onSwipe: onSwipe, isFirst: cIdx === 0 && seen.size <= 1 }),
+                React.createElement("div", { style: { display: "flex", gap: 7, marginBottom: 11 } },
+                    React.createElement("button", { className: "btn btn-ghost", style: { flex: 1 }, onClick: () => onSwipe(-1), disabled: cIdx === 0 }, "\u2190 \u4E0A\u4E00\u5F35"),
+                    React.createElement("button", { className: "btn btn-ghost", style: { flex: 1 }, onClick: () => onSwipe(+1), disabled: cIdx === queue.length - 1 }, "\u4E0B\u4E00\u5F35 \u2192")),
+                allSeen
+                    ? React.createElement("button", { className: "btn btn-gold", style: { width: "100%" }, onClick: startSpell }, "\uD83D\uDD13 \u5168\u90E8\u770B\u5B8C\uFF01\u958B\u59CB\u9ED8\u5BEB \u2192")
+                    : React.createElement("div", { style: { textAlign: "center", fontFamily: "monospace", fontSize: ".6rem", color: "#3d4a5a", padding: 11, border: "1px dashed #21262d", borderRadius: 12 } },
+                        "\uD83D\uDD12 \u770B\u5B8C\u5168\u90E8 ",
+                        queue.length,
+                        " \u5F35\u5F8C\u89E3\u9396\u9ED8\u5BEB ",
+                        React.createElement("span", { style: { color: "#f0c040", marginLeft: 6 } },
+                            seen.size,
+                            "/",
+                            queue.length)))),
+            screen === "spell" && spellCard && (React.createElement(React.Fragment, null,
+                React.createElement("div", { className: "phdr" },
+                    React.createElement("button", { className: "back", onClick: () => setScreen("cards") }, "\u2190 \u56DE\u55AE\u5B57\u5361"),
+                    React.createElement("span", { className: "ptag green" }, "\u270D \u9ED8\u5BEB\u6311\u6230"),
+                    combo >= 2 && React.createElement("span", { className: "combo" },
+                        "\uD83D\uDD25 \u00D7",
+                        combo),
+                    React.createElement("span", { style: { marginLeft: "auto", fontFamily: "monospace", fontSize: ".66rem", color: "#8b949e" } },
+                        sIdx + 1,
+                        "/",
+                        queue.length)),
+                React.createElement("div", { style: { display: "flex", gap: 6, justifyContent: "center", marginBottom: 14 } }, queue.map((w, i) => {
+                    const done = spellCorrectSet.current.has(w.id);
+                    const active = i === sIdx;
+                    return (React.createElement("div", { key: i, style: Object.assign({ width: 28, height: 28, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: ".75rem", fontWeight: 700, transition: "all .3s" }, (done
+                            ? { background: "linear-gradient(135deg,#22c55e,#16a34a)", color: "#fff", boxShadow: "0 0 8px #22c55e66" }
+                            : active
+                                ? { background: "#1a1a2e", border: "2px solid #7c3aed", color: "#a78bfa", boxShadow: "0 0 8px #7c3aed55" }
+                                : { background: "#161b22", border: "2px solid #21262d", color: "#2a3545" })) }, done ? "✓" : i + 1));
+                })),
+                React.createElement("div", { style: { fontFamily: "monospace", fontSize: ".56rem", color: "#3d4a5a",
+                        textAlign: "center", marginBottom: 14, letterSpacing: ".04em" } }, "5 \u984C\u5168\u5C0D\u624D\u7B97\u5B8C\u6210 \u00B7 \u7B54\u932F\u53EF\u91CD\u8A66"),
+                React.createElement("div", { style: { background: "#161b22", border: "1px solid #30363d", borderRadius: 20, padding: 24, marginBottom: 14, textAlign: "center" } },
+                    React.createElement("div", { style: { fontFamily: "monospace", fontSize: ".56rem", letterSpacing: ".12em", textTransform: "uppercase", color: "#7c3aed", marginBottom: 11 } }, "\u6839\u64DA\u4E2D\u6587\u610F\u601D\uFF0C\u9ED8\u5BEB\u82F1\u6587\u55AE\u5B57"),
+                    React.createElement("div", { style: { fontFamily: "Georgia,serif", fontSize: "1.5rem", fontWeight: 600, color: "#f0c040", marginBottom: 3 } }, spellCard.meaning),
+                    React.createElement("div", { style: { fontFamily: "monospace", fontSize: ".64rem", color: "#8b949e", marginBottom: 14 } },
+                        spellCard.pos,
+                        " \u00B7 ",
+                        spellCard.phonetic),
+                    React.createElement("div", { style: { background: "#0d1117", borderRadius: 10, padding: "11px 13px", marginBottom: 16, border: "1px solid #21262d" } },
+                        React.createElement("div", { style: { fontFamily: "Georgia,serif", fontStyle: "italic", fontSize: ".84rem", color: "#8b949e", lineHeight: 1.7, marginBottom: 8 } },
+                            "\u300C",
+                            spellCard.example.replace(new RegExp(spellCard.word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "gi"), ch => "＿".repeat(ch.length)),
+                            "\u300D"),
+                        React.createElement("div", { style: { fontFamily: "Georgia,serif", fontSize: ".74rem", color: "#5a6a7a", lineHeight: 1.55, marginBottom: 10, textAlign: "left", paddingLeft: 6, borderLeft: "2px solid #2a3545" } }, spellCard.exTrans),
+                        React.createElement("div", { style: { display: "flex", gap: 7, justifyContent: "center", flexWrap: "wrap" } },
+                            React.createElement(SpeakBtn, { text: spellCard.word, mode: "word", label: "\uD83D\uDD0A \u55AE\u5B57" }),
+                            React.createElement(SpeakBtn, { text: spellCard.example, mode: "sentence", label: "\uD83C\uDF99 \u4F8B\u53E5" }))),
+                    React.createElement("div", { style: { display: "flex", justifyContent: "center", gap: 4, flexWrap: "wrap", marginBottom: 14 } }, spellCard.word.split("").map((ch, i) => {
+                        const typed = input[i] || "";
+                        const base = { width: 30, height: 38, borderRadius: 6, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Cinzel',serif", fontSize: ".84rem", fontWeight: 700, transition: "all .2s", border: "1.5px solid" };
+                        const st = spellRes === "correct" ? Object.assign(Object.assign({}, base), { background: "#0d2a0d", borderColor: "#22c55e", color: "#22c55e" }) : spellRes === "wrong" ? Object.assign(Object.assign({}, base), { background: "#2a0d0d", borderColor: "#ef4444", color: "#ef4444" }) : typed ? Object.assign(Object.assign({}, base), { background: "#1a1a2e", borderColor: "#7c3aed", color: "#a78bfa" }) : Object.assign(Object.assign({}, base), { background: "#21262d", borderColor: "#30363d", color: "#e6edf3" });
+                        return React.createElement("div", { key: i, style: st }, spellRes ? ch : typed);
+                    })),
+                    React.createElement("input", { ref: inputRef, style: { width: "100%", background: spellRes === "correct" ? "#0d2a0d" : spellRes === "wrong" ? "#2a0d0d" : "#21262d", border: `2px solid ${spellRes === "correct" ? "#22c55e" : spellRes === "wrong" ? "#ef4444" : "#30363d"}`, borderRadius: 12, padding: "13px 15px", fontFamily: "'Cinzel',serif", fontSize: "1.15rem", color: "#e6edf3", textAlign: "center", letterSpacing: ".08em", outline: "none" }, value: input, onChange: e => !spellRes && setInput(e.target.value), onKeyDown: e => e.key === "Enter" && submitSpell(), placeholder: "\u8F38\u5165\u82F1\u6587\uFF0C\u6309 Enter\u2026", disabled: !!spellRes, autoComplete: "off", autoCorrect: "off", spellCheck: false }),
+                    spellRes && React.createElement("div", { style: { marginTop: 11, fontFamily: "monospace", fontSize: ".78rem", color: spellRes === "correct" ? "#22c55e" : "#ef4444", lineHeight: 1.6 } }, spellRes === "correct"
+                        ? React.createElement(React.Fragment, null,
+                            React.createElement("span", null, "\u2713 \u6B63\u78BA\uFF01"),
+                            combo >= 3 && React.createElement(React.Fragment, null,
+                                " \uD83D\uDD25 \u00D7",
+                                combo),
+                            React.createElement("span", { style: { color: "#a78bfa", marginLeft: 6 } },
+                                "+",
+                                XP_OK + (combo >= 3 ? XP_BONUS : 0),
+                                " XP"))
+                        : React.createElement(React.Fragment, null,
+                            React.createElement("span", null, "\u2717 \u6B63\u78BA\u7B54\u6848\uFF1A"),
+                            React.createElement("b", { style: { fontFamily: "'Cinzel',serif", fontSize: ".95rem", color: "#22c55e", marginLeft: 5 } }, spellCard.word)))),
+                !spellRes && (React.createElement("button", { className: "btn btn-purple", style: { width: "100%" }, onClick: submitSpell }, "\u78BA\u8A8D\u7B54\u6848")),
+                spellRes === "correct" && (React.createElement("button", { className: "btn btn-purple", style: { width: "100%" }, onClick: advanceSpell }, sIdx + 1 < queue.length ? "下一個 →" : "查看結果 →")),
+                spellRes === "wrong" && (React.createElement("div", { style: { display: "flex", gap: 9 } },
+                    React.createElement("button", { className: "btn", style: { flex: 1,
+                            background: "#1a1208", border: "1.5px solid #c9903a55", color: "#c9903a",
+                            display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }, onClick: retrySpell }, "\uD83D\uDD04 \u518D\u8A66\u4E00\u6B21"),
+                    React.createElement("button", { className: "btn btn-ghost", style: { flex: 1 }, onClick: advanceSpell }, sIdx + 1 < queue.length ? "跳過 →" : "查看結果 →"))))),
+            screen === "wrongReview" && wrCard && (() => {
+                const res = wrSpellRes;
+                return (React.createElement(React.Fragment, null,
+                    React.createElement("div", { className: "phdr" },
+                        React.createElement("button", { className: "back", onClick: () => setScreen("home") }, "\u2190 \u8FD4\u56DE"),
+                        React.createElement("span", { className: "ptag red" }, "\u2717 \u932F\u984C\u8907\u7FD2"),
+                        React.createElement("span", { style: { marginLeft: "auto", fontFamily: "monospace", fontSize: ".66rem", color: "#8b949e" } },
+                            wrIdx + 1,
+                            "/",
+                            wrQueue.length)),
+                    React.createElement(SpellCard, { card: wrCard, input: wrInput, setInput: setWrInput, spellRes: res, inputRef: wrInputRef, onSubmit: wrongSubmit, onRetry: wrongRetry, onSkip: wrongSkip, accentColor: "#ef4444", isLast: wrIdx + 1 >= wrQueue.length }),
+                    !res && (React.createElement("button", { className: "btn btn-purple", style: { width: "100%" }, onClick: wrongSubmit }, "\u78BA\u8A8D\u7B54\u6848")),
+                    res === "correct" && (React.createElement("button", { className: "btn btn-purple", style: { width: "100%" }, onClick: wrongSubmit }, wrIdx + 1 < wrQueue.length ? "下一個 →" : "查看結果 →")),
+                    res === "wrong" && (React.createElement("div", { style: { display: "flex", gap: 9 } },
+                        React.createElement("button", { className: "btn", style: { flex: 1, background: "#1a1208",
+                                border: "1.5px solid #c9903a55", color: "#c9903a",
+                                display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }, onClick: wrongRetry }, "\uD83D\uDD04 \u518D\u8A66\u4E00\u6B21"),
+                        React.createElement("button", { className: "btn btn-ghost", style: { flex: 1 }, onClick: wrongSkip }, wrIdx + 1 < wrQueue.length ? "跳過 →" : "查看結果 →")))));
+            })(),
+            screen === "review" && revCard && (() => {
+                return (React.createElement(React.Fragment, null,
+                    React.createElement("div", { className: "phdr" },
+                        React.createElement("button", { className: "back", onClick: () => setScreen("home") }, "\u2190 \u8FD4\u56DE"),
+                        React.createElement("span", { className: "ptag purple" }, "\uD83D\uDCD6 \u827E\u8CD3\u8C6A\u65AF\u8907\u7FD2"),
+                        combo >= 2 && React.createElement("span", { className: "combo" },
+                            "\uD83D\uDD25 \u00D7",
+                            combo),
+                        React.createElement("span", { style: { marginLeft: "auto", fontFamily: "monospace", fontSize: ".66rem", color: "#8b949e" } },
+                            rIdx + 1,
+                            "/",
+                            rQueue.length)),
+                    React.createElement(SpellCard, { card: revCard, input: rInput, setInput: setRInput, spellRes: rSpellRes, inputRef: rInputRef, onSubmit: reviewSubmit, onRetry: reviewRetry, onSkip: reviewSkip, isLast: rIdx + 1 >= rQueue.length }),
+                    !rSpellRes && (React.createElement("button", { className: "btn btn-purple", style: { width: "100%" }, onClick: reviewSubmit }, "\u78BA\u8A8D\u7B54\u6848")),
+                    rSpellRes === "correct" && (React.createElement("button", { className: "btn btn-purple", style: { width: "100%" }, onClick: reviewSubmit }, rIdx + 1 < rQueue.length ? "下一個 →" : "查看結果 →")),
+                    rSpellRes === "wrong" && (React.createElement("div", { style: { display: "flex", gap: 9 } },
+                        React.createElement("button", { className: "btn", style: { flex: 1, background: "#1a1208",
+                                border: "1.5px solid #c9903a55", color: "#c9903a",
+                                display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }, onClick: reviewRetry }, "\uD83D\uDD04 \u518D\u8A66\u4E00\u6B21"),
+                        React.createElement("button", { className: "btn btn-ghost", style: { flex: 1 }, onClick: reviewSkip }, rIdx + 1 < rQueue.length ? "跳過 →" : "查看結果 →")))));
+            })(),
+            screen === "scramble" && scQueue[scIdx] && (() => {
+                const card = scQueue[scIdx];
+                const correct = tokenize(card.example);
+                const allPlaced = scAnswer.length === correct.length;
+                return (React.createElement(React.Fragment, null,
+                    React.createElement("div", { className: "phdr" },
+                        React.createElement("button", { className: "back", onClick: () => setScreen("home") }, "\u2190 \u8FD4\u56DE"),
+                        React.createElement("span", { className: "ptag green" }, "\uD83E\uDDE9 \u4F8B\u53E5\u91CD\u7D44"),
+                        scCombo >= 2 && React.createElement("span", { className: "combo" },
+                            "\uD83D\uDD25 \u00D7",
+                            scCombo),
+                        React.createElement("span", { style: { marginLeft: "auto", fontFamily: "monospace", fontSize: ".66rem", color: "#8b949e" } },
+                            scIdx + 1,
+                            "/",
+                            scQueue.length)),
+                    React.createElement("div", { style: { height: 3, background: "#21262d", borderRadius: 2, marginBottom: 16, overflow: "hidden" } },
+                        React.createElement("div", { style: { height: "100%", borderRadius: 2, background: "linear-gradient(90deg,#22c55e,#f0c040)",
+                                width: `${(scIdx / scQueue.length) * 100}%`, transition: "width .4s ease" } })),
+                    React.createElement("div", { style: { background: "linear-gradient(135deg,#1c1033,#0d1117)", border: "1px solid #3d2e6b",
+                            borderRadius: 16, padding: "18px 20px", marginBottom: 14 } },
+                        React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8, marginBottom: 10 } },
+                            React.createElement("span", { style: Object.assign({ fontFamily: "monospace", fontSize: ".56rem", padding: "2px 8px", borderRadius: 20 }, (card.tag === "高中" ? { background: "#1a2a1a", border: "1px solid #22c55e44", color: "#22c55e" } : { background: "#1a1a2e", border: "1px solid #7c3aed44", color: "#a78bfa" })) }, card.tag === "高中" ? "📗 高中" : "🎓 托福"),
+                            React.createElement(SpeakBtn, { text: card.example, mode: "sentence", label: "\uD83C\uDF99 \u807D\u4F8B\u53E5" })),
+                        React.createElement("div", { style: { fontFamily: "'Cinzel',serif", fontSize: "1.6rem", fontWeight: 900, color: "#f0c040",
+                                marginBottom: 4, letterSpacing: ".03em" } }, card.word),
+                        React.createElement("div", { style: { fontFamily: "monospace", fontSize: ".66rem", color: "#8b949e", marginBottom: 6 } },
+                            card.phonetic,
+                            " \u00B7 ",
+                            card.pos),
+                        React.createElement("div", { style: { fontFamily: "Georgia,serif", fontSize: ".8rem", color: "#6a7a8a", lineHeight: 1.55,
+                                paddingLeft: 7, borderLeft: "2px solid #2a3545" } }, card.exTrans)),
+                    React.createElement("div", { style: { background: "#0d1117", border: `2px solid ${scResult === "correct" ? "#22c55e" : scResult === "wrong" ? "#ef4444" : "#21262d"}`, borderRadius: 16, padding: "14px 14px", marginBottom: 10,
+                            minHeight: 68, display: "flex", flexWrap: "wrap", gap: 6, alignItems: "flex-start",
+                            transition: "border-color .3s", position: "relative" } },
+                        scAnswer.length === 0 && !scResult && (React.createElement("div", { style: { fontFamily: "monospace", fontSize: ".6rem", color: "#2a3545",
+                                position: "absolute", top: "50%", left: "50%", transform: "translate(-50%,-50%)",
+                                whiteSpace: "nowrap" } }, "\u9EDE\u64CA\u4E0B\u65B9\u55AE\u8A5E\u586B\u5165\u6B64\u8655")),
+                        scAnswer.map((tok, i) => (React.createElement("div", { key: tok.id, onClick: () => {
+                                if (scResult)
+                                    return;
+                                // tap placed token to remove it
+                                const removed = scAnswer[i];
+                                setScAnswer(a => a.filter((_, j) => j !== i));
+                                setScTokens(ts => ts.map(t => t.id === removed.id ? Object.assign(Object.assign({}, t), { used: false }) : t));
+                            }, style: {
+                                background: scResult === "correct" ? "linear-gradient(135deg,#0d2a0d,#0a1e0a)"
+                                    : scResult === "wrong" ? "#2a0d0d"
+                                        : "linear-gradient(135deg,#1a1a2e,#12112a)",
+                                border: `1.5px solid ${scResult === "correct" ? "#22c55e" : scResult === "wrong" ? "#ef4444" : "#7c3aed66"}`,
+                                borderRadius: 8, padding: "6px 12px",
+                                fontFamily: "Georgia,serif", fontSize: ".88rem",
+                                color: scResult === "correct" ? "#22c55e" : scResult === "wrong" ? "#ef4444" : "#c8d0da",
+                                cursor: scResult ? "default" : "pointer",
+                                userSelect: "none", transition: "all .15s",
+                                animation: scResult ? "none" : undefined,
+                            } }, tok.word)))),
+                    scResult && (React.createElement("div", { style: { textAlign: "center", marginBottom: 12,
+                            fontFamily: "monospace", fontSize: ".82rem",
+                            color: scResult === "correct" ? "#22c55e" : "#ef4444", lineHeight: 1.7 } },
+                        scResult === "correct"
+                            ? React.createElement(React.Fragment, null,
+                                "\u2713 \u5B8C\u7F8E\uFF01",
+                                scCombo >= 3 && React.createElement(React.Fragment, null,
+                                    " \uD83D\uDD25 \u00D7",
+                                    scCombo),
+                                React.createElement("span", { style: { color: "#a78bfa", marginLeft: 6 } },
+                                    "+",
+                                    XP_OK + (scCombo >= 3 ? XP_BONUS : 0),
+                                    " XP"))
+                            : React.createElement("span", null, "\u2717 \u6B63\u78BA\u9806\u5E8F\u662F\uFF1A"),
+                        scResult === "wrong" && (React.createElement("div", { style: { fontFamily: "Georgia,serif", fontStyle: "italic",
+                                fontSize: ".84rem", color: "#8b949e", marginTop: 6,
+                                background: "#161b22", borderRadius: 10, padding: "10px 14px",
+                                border: "1px solid #30363d", textAlign: "left", lineHeight: 1.7 } },
+                            React.createElement(Hl, { s: card.example, w: card.word }))))),
+                    !scResult && (React.createElement("div", { style: { display: "flex", flexWrap: "wrap", gap: 7, marginBottom: 14,
+                            background: "#161b22", borderRadius: 14, padding: "14px 12px",
+                            border: "1px solid #30363d" } }, scTokens.map(tok => (React.createElement("div", { key: tok.id, onClick: () => scTapToken(tok), style: {
+                            background: tok.used ? "#21262d" : "linear-gradient(135deg,#1a2a1a,#0f1e0f)",
+                            border: `1.5px solid ${tok.used ? "#21262d" : "#22c55e55"}`,
+                            borderRadius: 8, padding: "7px 13px",
+                            fontFamily: "Georgia,serif", fontSize: ".9rem",
+                            color: tok.used ? "#2a3545" : "#c8d0da",
+                            cursor: tok.used ? "default" : "pointer",
+                            userSelect: "none", transition: "all .2s",
+                            textDecoration: tok.used ? "line-through" : "none",
+                            opacity: tok.used ? .4 : 1,
+                        } }, tok.word))))),
+                    !scResult ? (React.createElement("div", { style: { display: "flex", gap: 8, marginBottom: 8 } },
+                        React.createElement("button", { className: "btn btn-ghost", style: { flex: 1 }, onClick: scRemoveLast, disabled: !scAnswer.length }, "\u232B \u522A\u9664"),
+                        React.createElement("button", { className: "btn btn-ghost", style: { flex: 1 }, onClick: scClear, disabled: !scAnswer.length }, "\u2715 \u6E05\u7A7A"),
+                        React.createElement("button", { className: "btn btn-purple", style: { flex: 2 }, onClick: submitScramble, disabled: !allPlaced }, "\u78BA\u8A8D\u7B54\u6848"))) : (React.createElement("button", { className: "btn btn-purple", style: { width: "100%" }, onClick: submitScramble }, scIdx + 1 < scQueue.length ? "下一題 →" : "查看結果 →")),
+                    React.createElement("div", { style: { fontFamily: "monospace", fontSize: ".54rem", color: "#2a3545",
+                            textAlign: "center", marginTop: 8 } },
+                        correct.length,
+                        " \u500B\u55AE\u8A5E \u00B7 \u9EDE\u64CA\u5DF2\u586B\u5165\u7684\u8A5E\u53EF\u79FB\u9664")));
+            })(),
+            screen === "done" && (() => {
+                const fromScramble = scOk + scBad > 0 && sOk + sBad === 0;
+                const dOk = fromScramble ? scOk : sOk;
+                const dBad = fromScramble ? scBad : sBad;
+                const dXP = fromScramble ? scXP : sXP;
+                const dCombo = fromScramble ? scMaxCombo : maxCombo;
+                const dStars = dOk >= 5 ? 3 : dOk >= 3 ? 2 : 1;
+                const dLabel = fromScramble ? "🧩 重組" : "✍ 默寫";
+                // For spell: check if all 5 were correctly answered
+                const spellPassed = fromScramble ? null : queue.every(w => spellCorrectSet.current.has(w.id));
+                return (React.createElement(React.Fragment, null,
+                    justUnlocked && React.createElement("div", { style: { background: "linear-gradient(135deg,#1c1033,#0f0a1e)", border: "2px solid #7c3aed", borderRadius: 20, padding: "28px 24px", textAlign: "center", marginBottom: 14, boxShadow: "0 0 40px rgba(124,58,237,.4)" } },
+                        React.createElement("div", { style: { fontSize: "2.6rem", marginBottom: 8 } }, "\uD83C\uDF89"),
+                        React.createElement("div", { style: { fontFamily: "'Cinzel',serif", fontSize: "1rem", fontWeight: 900, color: "#f0c040", marginBottom: 5 } }, "\u65B0\u7AE0\u7BC0\u89E3\u9396\uFF01"),
+                        React.createElement("div", { style: { fontFamily: "'Cinzel',serif", fontSize: "1.2rem", color: "#a78bfa", marginBottom: 14 } },
+                            justUnlocked.emoji,
+                            " ",
+                            justUnlocked.title),
+                        React.createElement("button", { className: "btn btn-purple", onClick: () => { setActiveNovel(justUnlocked); setJustUnlocked(null); setScreen("novel"); } }, "\u7ACB\u5373\u95B1\u8B80 \uD83D\uDCD6"),
+                        React.createElement("button", { style: { display: "block", margin: "8px auto 0", background: "none", border: "none", fontFamily: "monospace", fontSize: ".64rem", color: "#8b949e", cursor: "pointer" }, onClick: () => setJustUnlocked(null) }, "\u7A0D\u5F8C\u518D\u8B80")),
+                    React.createElement("div", { style: { background: "#161b22", border: "1px solid #30363d", borderRadius: 20, padding: "36px 26px", textAlign: "center" } },
+                        React.createElement("div", { style: { fontFamily: "monospace", fontSize: ".56rem", color: "#8b949e", letterSpacing: ".1em", textTransform: "uppercase", marginBottom: 10 } },
+                            dLabel,
+                            " \u7D50\u679C"),
+                        !fromScramble && (React.createElement("div", { style: { marginBottom: 14, padding: "10px 16px", borderRadius: 12,
+                                background: spellPassed ? "#0d2a0d" : "#1a0808",
+                                border: `1px solid ${spellPassed ? "#22c55e44" : "#ef444444"}`,
+                                fontFamily: "monospace", fontSize: ".72rem",
+                                color: spellPassed ? "#22c55e" : "#ef4444" } }, spellPassed
+                            ? "🎉 5 題全對！打卡成功，繼續保持！"
+                            : `⚠️ 還有 ${queue.length - dOk} 題未完成，繼續加油！`)),
+                        React.createElement("div", { style: { fontSize: "2.2rem", letterSpacing: 4, marginBottom: 12 } }, "⭐".repeat(dStars)),
+                        React.createElement("div", { style: { fontFamily: "'Cinzel',serif", fontSize: "1.6rem", fontWeight: 900, color: "#f0c040", marginBottom: 6 } }, dOk > dBad ? "Excellent!" : "Keep Going!"),
+                        React.createElement("div", { style: { fontFamily: "monospace", fontSize: "1.9rem", fontWeight: 700, color: "#7c3aed", marginBottom: 2 } },
+                            "+",
+                            dXP),
+                        React.createElement("div", { style: { fontFamily: "monospace", fontSize: ".56rem", color: "#8b949e", textTransform: "uppercase", letterSpacing: ".1em", marginBottom: 18 } }, "XP \u7372\u5F97"),
+                        React.createElement("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 7, marginBottom: 18 } }, [[dOk, "#22c55e", "正確"], [dBad, "#ef4444", "錯誤"], [dCombo, "#a78bfa", "連勝"]].map(([v, c, l]) => (React.createElement("div", { key: l, style: { background: "#21262d", borderRadius: 9, padding: 11 } },
+                            React.createElement("div", { style: { fontFamily: "'Cinzel',serif", fontSize: "1.35rem", fontWeight: 700, color: c, marginBottom: 2 } }, v),
+                            React.createElement("div", { style: { fontFamily: "monospace", fontSize: ".52rem", color: "#8b949e", textTransform: "uppercase" } }, l))))),
+                        !fromScramble && !spellPassed && (React.createElement("button", { className: "btn btn-gold", style: { width: "100%", marginBottom: 9 }, onClick: startSpell }, "\uD83D\uDD04 \u91CD\u65B0\u6311\u6230\u9ED8\u5BEB")),
+                        !fromScramble && wrongIds.size > 0 && (React.createElement("button", { className: "btn btn-red-soft", style: { width: "100%", marginBottom: 9 }, onClick: startWrongReview },
+                            "\u2717 \u8907\u7FD2\u932F\u8AA4\u55AE\u5B57 (",
+                            wrongIds.size,
+                            ")")),
+                        React.createElement("button", { className: "btn btn-purple", style: { width: "100%", marginBottom: 7 }, onClick: () => setScreen("home") }, "\u56DE\u9996\u9801"),
+                        React.createElement("button", { className: "btn btn-ghost", style: { width: "100%" }, onClick: () => setScreen("library") }, "\uD83D\uDCDA \u66F8\u5EAB"))));
+            })(),
+            screen === "library" && (React.createElement(React.Fragment, null,
+                React.createElement("div", { style: { fontFamily: "'Cinzel',serif", fontSize: "1.2rem", fontWeight: 900, color: "#f0c040", marginBottom: 3 } }, "\uD83D\uDCDA \u9B54\u6CD5\u66F8\u5EAB"),
+                React.createElement("div", { style: { fontFamily: "Georgia,serif", fontSize: ".8rem", color: "#8b949e", marginBottom: 16 } }, "\u7CBE\u719F\u55AE\u5B57\u89E3\u9396\u54C8\u5229\u6CE2\u7279\u539F\u6587\u7AE0\u7BC0\uFF01"),
+                React.createElement("div", { style: { background: "#161b22", border: "1px solid #30363d", borderRadius: 12, padding: "14px 18px", marginBottom: 14 } },
+                    React.createElement("div", { style: { display: "flex", justifyContent: "space-between", marginBottom: 7 } },
+                        React.createElement("span", { style: { fontFamily: "monospace", fontSize: ".56rem", letterSpacing: ".1em", textTransform: "uppercase", color: "#7c3aed" } }, "\u7CBE\u719F\u9032\u5EA6"),
+                        React.createElement("span", { style: { fontFamily: "monospace", fontSize: ".7rem", color: "#f0c040", fontWeight: 700 } },
+                            mastered,
+                            " / ",
+                            ALL_WORDS.length)),
+                    React.createElement("div", { style: { height: 5, background: "#21262d", borderRadius: 3, overflow: "hidden" } },
+                        React.createElement("div", { style: { height: "100%", width: `${Math.round(mastered / ALL_WORDS.length * 100)}%`, background: "linear-gradient(90deg,#7c3aed,#f0c040)", borderRadius: 3 } }))),
+                NOVELS.map(n => React.createElement(NovelCard, { key: n.id, novel: n, mastered: mastered, onRead: () => { setActiveNovel(n); setScreen("novel"); } })),
+                React.createElement("div", { style: { fontFamily: "monospace", fontSize: ".58rem", color: "#3d4a5a", textAlign: "center", marginTop: 10 } }, "\uD83D\uDCA1 \u7CBE\u719F = \u8A18\u61B6\u7B49\u7D1A Lv.3\uFF08\u9ED8\u5BEB\u9023\u7E8C\u6B63\u78BA 3 \u6B21\uFF09"))),
+            screen === "novel" && activeNovel && (React.createElement(React.Fragment, null,
+                React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8, marginBottom: 18 } },
+                    React.createElement("button", { className: "back", onClick: () => setScreen("library") }, "\u2190 \u66F8\u5EAB"),
+                    React.createElement("div", { style: { fontFamily: "monospace", fontSize: ".56rem", letterSpacing: ".08em", textTransform: "uppercase", color: "#7c3aed" } }, "\u539F\u6587\u95B1\u8B80")),
+                React.createElement("div", { style: { background: "linear-gradient(160deg,#1c1033,#0f0a1e)", border: "1px solid #3d2e6b", borderRadius: 20, padding: "28px 24px" } },
+                    React.createElement("div", { style: { fontSize: "2rem", textAlign: "center", marginBottom: 12 } }, activeNovel.emoji),
+                    React.createElement("div", { style: { fontFamily: "'Cinzel',serif", fontSize: "1.05rem", fontWeight: 900, color: "#f0c040", textAlign: "center", marginBottom: 3, lineHeight: 1.3 } }, activeNovel.title),
+                    React.createElement("div", { style: { fontFamily: "monospace", fontSize: ".56rem", color: "#7c3aed", letterSpacing: ".08em", textAlign: "center", marginBottom: 20 } }, activeNovel.subtitle),
+                    React.createElement("div", { style: { height: 1, background: "#3d2e6b", marginBottom: 20 } }),
+                    React.createElement("div", { style: { fontFamily: "Georgia,serif", fontSize: ".98rem", color: "#c8d0da", lineHeight: 1.95, whiteSpace: "pre-wrap" } }, activeNovel.excerpt)),
+                React.createElement("div", { style: { textAlign: "center", marginTop: 14 } },
+                    React.createElement("button", { className: "btn btn-purple", onClick: () => setScreen("home") }, "\u7E7C\u7E8C\u80CC\u55AE\u5B57 \u2192")))),
+            screen === "stats" && (() => {
+                const ap = data.progress || {};
+                const tc = ALL_WORDS.reduce((s, w) => { var _a; return s + (((_a = ap[w.id]) === null || _a === void 0 ? void 0 : _a.correct) || 0); }, 0);
+                const ti = ALL_WORDS.reduce((s, w) => { var _a; return s + (((_a = ap[w.id]) === null || _a === void 0 ? void 0 : _a.incorrect) || 0); }, 0);
+                const acc = (tc + ti) > 0 ? Math.round(tc / (tc + ti) * 100) : 0;
+                const lc = EBBINGHAUS.map((_, l) => ALL_WORDS.filter(w => { var _a; return (((_a = ap[w.id]) === null || _a === void 0 ? void 0 : _a.level) || 0) === l && ap[w.id]; }).length);
+                const ml = Math.max(...lc, 1);
+                const ww = ALL_WORDS.filter(w => { var _a; return (((_a = ap[w.id]) === null || _a === void 0 ? void 0 : _a.incorrect) || 0) > 0; }).sort((a, b) => { var _a, _b; return (((_a = ap[b.id]) === null || _a === void 0 ? void 0 : _a.incorrect) || 0) - (((_b = ap[a.id]) === null || _b === void 0 ? void 0 : _b.incorrect) || 0); });
+                return (React.createElement(React.Fragment, null,
+                    React.createElement("div", { style: { fontFamily: "monospace", fontSize: ".58rem", letterSpacing: ".12em", textTransform: "uppercase", color: "#7c3aed", marginBottom: 13 } }, "\u5B78\u7FD2\u7D71\u8A08"),
+                    React.createElement("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 7, marginBottom: 16 } }, [[learned, "已學習"], [mastered, "⚡精熟"], [acc + "%", "答對率"]].map(([v, l]) => (React.createElement("div", { key: l, style: { background: "#161b22", border: "1px solid #30363d", borderRadius: 10, padding: 11, textAlign: "center" } },
+                        React.createElement("div", { style: { fontFamily: "'Cinzel',serif", fontSize: "1.35rem", fontWeight: 700, color: "#f0c040" } }, v),
+                        React.createElement("div", { style: { fontFamily: "monospace", fontSize: ".52rem", color: "#8b949e", textTransform: "uppercase", letterSpacing: ".05em", marginTop: 1 } }, l))))),
+                    ["高中", "托福"].map(tag => {
+                        const ws = ALL_WORDS.filter(w => w.tag === tag);
+                        const ln = ws.filter(w => { var _a; return ((_a = ap[w.id]) === null || _a === void 0 ? void 0 : _a.level) > 0; }).length;
+                        return (React.createElement("div", { key: tag, style: { background: "#161b22", border: "1px solid #30363d", borderRadius: 10, padding: "13px 17px", marginBottom: 7 } },
+                            React.createElement("div", { style: { display: "flex", justifyContent: "space-between", marginBottom: 5 } },
+                                React.createElement("span", { style: { fontFamily: "Georgia,serif", fontWeight: 600, fontSize: ".9rem" } }, tag === "高中" ? "高中 7000 單" : "托福核心"),
+                                React.createElement("span", { style: { fontFamily: "monospace", fontSize: ".64rem", color: "#8b949e" } },
+                                    ln,
+                                    "/",
+                                    ws.length)),
+                            React.createElement("div", { style: { height: 4, background: "#21262d", borderRadius: 2, overflow: "hidden" } },
+                                React.createElement("div", { style: { height: "100%", width: `${Math.round(ln / ws.length * 100)}%`, background: "linear-gradient(90deg,#7c3aed,#f0c040)", borderRadius: 2 } }))));
+                    }),
+                    React.createElement("div", { style: { fontFamily: "monospace", fontSize: ".56rem", letterSpacing: ".1em", textTransform: "uppercase", color: "#7c3aed", margin: "16px 0 9px" } }, "\u8A18\u61B6\u7B49\u7D1A\u5206\u4F48"),
+                    React.createElement("div", { style: { display: "flex", gap: 5, alignItems: "flex-end", height: 68, marginBottom: 22 } }, EBBINGHAUS.map((_, l) => (React.createElement("div", { key: l, style: { flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 3 } },
+                        React.createElement("div", { style: { width: "100%", height: lc[l] > 0 ? Math.max(7, Math.round(lc[l] / ml * 56)) : 3, background: lc[l] > 0 ? "linear-gradient(to top,#7c3aed,#f0c040)" : "#21262d", borderRadius: "3px 3px 0 0", transition: "height .5s" } }),
+                        React.createElement("div", { style: { fontFamily: "monospace", fontSize: ".46rem", color: "#8b949e" } }, ["1d", "2d", "4d", "7d", "15d", "1m", "2m", "4m"][l]))))),
+                    ww.length > 0 && React.createElement(React.Fragment, null,
+                        React.createElement("div", { style: { fontFamily: "monospace", fontSize: ".56rem", letterSpacing: ".1em", textTransform: "uppercase", color: "#ef4444", marginBottom: 8 } }, "\u932F\u8AA4\u6B21\u6578\u6700\u591A"),
+                        React.createElement("div", { style: { background: "#161b22", border: "1px solid #30363d", borderRadius: 11, overflow: "hidden", marginBottom: 13 } }, ww.slice(0, 5).map((w, i) => {
+                            var _a;
+                            return (React.createElement("div", { key: w.id, style: { display: "flex", alignItems: "center", gap: 9, padding: "9px 14px", borderBottom: i < 4 ? "1px solid #21262d" : "none" } },
+                                React.createElement("span", { style: { fontFamily: "'Cinzel',serif", fontSize: ".86rem", fontWeight: 700, color: "#f0c040", minWidth: 100 } }, w.word),
+                                React.createElement("span", { style: { fontFamily: "Georgia,serif", fontSize: ".75rem", color: "#8b949e", flex: 1 } }, w.meaning),
+                                React.createElement("span", { style: { fontFamily: "monospace", fontSize: ".58rem", color: "#ef4444", whiteSpace: "nowrap" } },
+                                    "\u2717", (_a = ap[w.id]) === null || _a === void 0 ? void 0 :
+                                    _a.incorrect)));
+                        })),
+                        React.createElement("button", { className: "btn btn-red-soft", style: { width: "100%", marginBottom: 11 }, onClick: () => { setWrQueue(shuffled(ww)); setWrIdx(0); setWrFlip(false); setScreen("wrongReview"); } }, "\u2717 \u958B\u59CB\u932F\u984C\u8907\u7FD2")),
+                    React.createElement("button", { style: { background: "none", border: "1px solid #30363d", borderRadius: 8, padding: "6px 13px", color: "#8b949e", cursor: "pointer", fontFamily: "monospace", fontSize: ".66rem" }, onClick: () => { if (confirm("確定清除？"))
+                            upd(() => ({})); } }, "\u91CD\u7F6E\u9032\u5EA6")));
+            })())));
 }
+
 try {
-ReactDOM.createRoot(document.getElementById(‘root’)).render(React.createElement(App));
-document.getElementById(‘loading’).remove();
+  ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(App));
+  document.getElementById('loading').remove();
 } catch(e) {
-document.getElementById(‘loading’).innerHTML =
-‘<div style="color:#ef4444;padding:30px 20px;text-align:center;font-family:monospace;line-height:1.8">’ +
-‘⚠️ 載入錯誤<br><span style="color:#8b949e;font-size:.8rem">’ + e.message + ‘</span></div>’;
-console.error(e);
+  document.getElementById('loading').innerHTML =
+    '<div style="color:#ef4444;padding:30px;text-align:center;font-family:monospace;line-height:2">⚠️ 載入錯誤<br><small style="color:#8b949e">' + e.message + '</small></div>';
+  console.error('App error:', e);
 }
-</script>
+  </script>
 
   <script>
-    const m={name:"WizWord",short_name:"WizWord",start_url:"./",display:"standalone",background_color:"#0d1117",theme_color:"#0d1117",icons:[{src:"data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%230d1117'/><text y='.9em' font-size='72' x='14'>⚡</text></svg>",sizes:"any",type:"image/svg+xml"}]};
+    const m={name:"WizWord",short_name:"WizWord",start_url:"./",display:"standalone",background_color:"#0d1117",theme_color:"#0d1117"};
     const b=new Blob([JSON.stringify(m)],{type:"application/json"});
-    const l=document.createElement("link");l.rel="manifest";l.href=URL.createObjectURL(b);document.head.appendChild(l);
+    const lk=document.createElement("link");lk.rel="manifest";lk.href=URL.createObjectURL(b);document.head.appendChild(lk);
     const isIOS=/iphone|ipad|ipod/i.test(navigator.userAgent);
     const isSA=window.navigator.standalone||window.matchMedia('(display-mode:standalone)').matches;
     if(isIOS&&!isSA&&!localStorage.getItem('hint')){
