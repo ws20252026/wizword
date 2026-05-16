@@ -10,14 +10,65 @@
   <meta name="theme-color" content="#0d1117"/>
   <title>WizWord ⚡</title>
   <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%230d1117'/><text y='.9em' font-size='72' x='14'>⚡</text></svg>"/>
+  <!-- Google Fonts - loads if available, gracefully degrades -->
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&display=swap" rel="stylesheet" media="print" onload="this.media='all'"/>
   <style>
+    /* App CSS - static, never wiped */
     *{box-sizing:border-box;margin:0;padding:0}
     html,body,#root{min-height:100%;background:#0d1117}
-    body{-webkit-tap-highlight-color:transparent;overscroll-behavior-y:contain}
+    body{-webkit-tap-highlight-color:transparent;overscroll-behavior-y:contain;color:#e6edf3;font-family:Georgia,serif}
     #loading{display:flex;align-items:center;justify-content:center;min-height:100vh;background:#0d1117;color:#f0c040;font-family:monospace;font-size:1rem;flex-direction:column;gap:14px}
     .bolt{font-size:2.5rem;animation:pu 1.2s ease-in-out infinite}
     .txt{animation:pu 1.2s ease-in-out infinite;opacity:.8}
     @keyframes pu{0%,100%{opacity:.3}50%{opacity:1}}
+
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#0d1117}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes pop{0%{transform:scale(0.7)}60%{transform:scale(1.15)}100%{transform:scale(1)}}
+
+.pill{background:none;border:1px solid #30363d;border-radius:20px;padding:4px 11px;font-family:monospace;font-size:.62rem;cursor:pointer;color:#8b949e;transition:all .18s}
+.pill.on{background:#f0c040;border-color:#f0c040;color:#0d1117;font-weight:600}
+.badge{font-family:monospace;font-size:.6rem;padding:2px 8px;border-radius:20px;background:#21262d;border:1px solid #30363d;color:#f0c040;font-weight:600;white-space:nowrap}
+.filt{background:#161b22;border:1px solid #30363d;border-radius:8px;padding:5px 11px;font-family:monospace;font-size:.66rem;cursor:pointer;color:#8b949e;transition:all .15s}
+.filt.on{background:#7c3aed;border-color:#7c3aed;color:white}
+
+.btn{border:none;border-radius:12px;padding:12px 17px;font-family:‘Georgia’,serif;font-size:.84rem;font-weight:700;cursor:pointer;letter-spacing:.04em;transition:all .18s;display:block;text-align:center}
+.btn-purple{background:linear-gradient(135deg,#7c3aed,#4f46e5);color:white;box-shadow:0 4px 18px rgba(124,58,237,.3)}
+.btn-purple:hover{transform:translateY(-2px);box-shadow:0 6px 26px rgba(124,58,237,.45)}
+.btn-purple:disabled{opacity:.35;cursor:not-allowed;transform:none!important}
+.btn-gold{background:linear-gradient(135deg,#f0c040,#c9903a);color:#0d1117;box-shadow:0 4px 16px rgba(240,192,64,.2)}
+.btn-gold:hover{transform:translateY(-2px)}
+.btn-gold:disabled{opacity:.35;cursor:not-allowed;transform:none!important}
+.btn-red{background:#2a0d0d;border:1.5px solid #ef4444;color:#ef4444;font-family:‘Georgia’,serif;font-size:.84rem;font-weight:700;padding:12px;border-radius:12px;cursor:pointer;transition:all .18s;letter-spacing:.04em}
+.btn-red:hover{background:#3a1010}
+.btn-red-soft{background:#1a0808;border:1.5px solid #ef444455;color:#ef4444;font-family:‘Georgia’,serif;font-size:.82rem;font-weight:700;padding:11px 17px;border-radius:12px;cursor:pointer;transition:all .18s;letter-spacing:.04em;display:block;text-align:center}
+.btn-red-soft:hover{border-color:#ef4444;background:#2a0d0d}
+.btn-red-soft:disabled{opacity:.35;cursor:not-allowed}
+.btn-green{background:#0d2a0d;border:1.5px solid #22c55e;color:#22c55e;font-family:‘Georgia’,serif;font-size:.84rem;font-weight:700;padding:12px;border-radius:12px;cursor:pointer;transition:all .18s;letter-spacing:.04em}
+.btn-green:hover{background:#103a10}
+.btn-ghost{background:#161b22;border:1px solid #30363d;color:#c8d0da;font-family:monospace;font-size:.7rem;letter-spacing:.02em;padding:9px 13px;border-radius:12px;cursor:pointer;transition:all .18s}
+.btn-ghost:hover{border-color:#8b949e}
+.btn-ghost:disabled{opacity:.25;cursor:not-allowed}
+.btn-sm-purple{background:linear-gradient(135deg,#7c3aed,#4f46e5);color:white;border:none;border-radius:8px;padding:6px 13px;font-family:‘Georgia’,serif;font-size:.74rem;font-weight:700;cursor:pointer;letter-spacing:.04em;white-space:nowrap;transition:all .18s}
+.btn-sm-purple:hover{transform:translateY(-1px)}
+
+.back{background:#161b22;border:1px solid #30363d;border-radius:8px;padding:5px 11px;font-family:monospace;font-size:.64rem;cursor:pointer;color:#8b949e;transition:all .15s}
+.back:hover{border-color:#f0c040;color:#f0c040}
+
+.phdr{display:flex;align-items:center;gap:6px;margin-bottom:12px;flex-wrap:wrap}
+.ptag{font-family:monospace;font-size:.6rem;padding:3px 8px;border-radius:4px}
+.ptag.purple{background:#1a1a2e;border:1px solid #7c3aed44;color:#a78bfa}
+.ptag.green{background:#1a2a1a;border:1px solid #22c55e44;color:#22c55e}
+.ptag.red{background:#1a0808;border:1px solid #ef444444;color:#ef4444}
+.combo{font-family:monospace;font-size:.66rem;font-weight:600;padding:3px 8px;border-radius:20px;background:#1a1a2e;border:1px solid #7c3aed55;color:#a78bfa}
+
+@media(max-width:480px){
+.btn{padding:10px 13px;font-size:.78rem}
+.pill{padding:3px 8px;font-size:.58rem}
+}
+
   </style>
 </head>
 <body>
@@ -25,35 +76,76 @@
   <div id="root"></div>
 
   <script>
-// MiniReact - minimal React-compatible runtime (no dependencies)
+// MiniReact v2 - fixed event handling and re-render
 (function(global) {
 "use strict";
 
-// ── Fiber / render engine ──────────────────────────────────────────────────
-let currentComponent = null;
-let hookIndex = 0;
+// ── State ──────────────────────────────────────────────────────────────────
+let _rootContainer = null;
+let _rootElement = null;
+let _rendering = false;
+
+function rerender() {
+  if (_rendering || !_rootContainer || !_rootElement) return;
+  _rendering = true;
+  try {
+    _rootContainer.innerHTML = '';
+    mount(_rootElement, _rootContainer);
+  } finally {
+    _rendering = false;
+  }
+  // Run pending effects after render
+  flushEffects();
+}
+
+// Schedule a re-render (batched)
+let _scheduled = false;
+function schedule() {
+  if (_scheduled) return;
+  _scheduled = true;
+  Promise.resolve().then(() => { _scheduled = false; rerender(); });
+}
+
+// ── Hooks storage ──────────────────────────────────────────────────────────
+// Components are identified by a path string through the tree
+let _currentPath = '';
+let _hookIndex = 0;
+const _store = {}; // path -> { hooks: [], effects: [] }
+
+function getStore() {
+  if (!_store[_currentPath]) _store[_currentPath] = { hooks: [], effects: [] };
+  return _store[_currentPath];
+}
 
 function useState(init) {
-  const comp = currentComponent;
-  const idx = hookIndex++;
-  if (comp.hooks[idx] === undefined) {
-    comp.hooks[idx] = typeof init === 'function' ? init() : init;
+  const path = _currentPath;
+  const idx = _hookIndex++;
+  const store = getStore();
+  if (store.hooks[idx] === undefined) {
+    store.hooks[idx] = typeof init === 'function' ? init() : init;
   }
   const setState = (val) => {
-    const next = typeof val === 'function' ? val(comp.hooks[idx]) : val;
-    if (next !== comp.hooks[idx]) {
-      comp.hooks[idx] = next;
-      scheduleUpdate(comp);
+    const next = typeof val === 'function' ? val(store.hooks[idx]) : val;
+    if (next !== store.hooks[idx]) {
+      store.hooks[idx] = next;
+      schedule();
     }
   };
-  return [comp.hooks[idx], setState];
+  return [store.hooks[idx], setState];
+}
+
+function useReducer(reducer, initArg, initFn) {
+  const init = initFn ? initFn(initArg) : initArg;
+  const [state, setState] = useState(init);
+  const dispatch = (action) => setState(s => reducer(s, action));
+  return [state, dispatch];
 }
 
 function useRef(init) {
-  const comp = currentComponent;
-  const idx = hookIndex++;
-  if (comp.hooks[idx] === undefined) comp.hooks[idx] = {current: init};
-  return comp.hooks[idx];
+  const store = getStore();
+  const idx = _hookIndex++;
+  if (store.hooks[idx] === undefined) store.hooks[idx] = { current: init };
+  return store.hooks[idx];
 }
 
 function useCallback(fn, deps) {
@@ -61,249 +153,130 @@ function useCallback(fn, deps) {
 }
 
 function useMemo(fn, deps) {
-  const comp = currentComponent;
-  const idx = hookIndex++;
-  const prev = comp.hooks[idx];
-  if (!prev || !deps || deps.some((d,i) => d !== prev.deps[i])) {
-    comp.hooks[idx] = {val: fn(), deps: deps || []};
-  }
-  return comp.hooks[idx].val;
+  const store = getStore();
+  const idx = _hookIndex++;
+  const prev = store.hooks[idx];
+  const changed = !prev || !deps || deps.some((d, i) => !Object.is(d, prev.deps[i]));
+  if (changed) store.hooks[idx] = { val: fn(), deps: deps || [] };
+  return store.hooks[idx].val;
 }
 
+const _pendingEffects = [];
 function useEffect(fn, deps) {
-  const comp = currentComponent;
-  const idx = hookIndex++;
-  const prev = comp.hooks[idx];
-  if (!prev || !deps || deps.some((d,i) => d !== (prev.deps||[])[i])) {
-    comp.hooks[idx] = {deps: deps || [], cleanup: null};
-    comp.pendingEffects = comp.pendingEffects || [];
-    comp.pendingEffects.push({fn, slot: idx});
+  const store = getStore();
+  const idx = _hookIndex++;
+  const prev = store.hooks[idx];
+  const changed = !prev || !deps || deps.some((d, i) => !Object.is(d, (prev.deps||[])[i]));
+  if (changed) {
+    store.hooks[idx] = { deps: deps || [], fn, cleanup: prev?.cleanup || null };
+    _pendingEffects.push({ entry: store.hooks[idx] });
   }
 }
 
-function useReducer(reducer, init, initFn) {
-  const [state, setState] = useState(initFn ? initFn(init) : init);
-  const dispatch = (action) => setState(s => reducer(s, action));
-  return [state, dispatch];
+function flushEffects() {
+  const toRun = _pendingEffects.splice(0);
+  toRun.forEach(({ entry }) => {
+    if (entry.cleanup) { try { entry.cleanup(); } catch(e) {} }
+    try { entry.cleanup = entry.fn() || null; } catch(e) { console.error(e); }
+  });
 }
 
-// ── Virtual DOM ────────────────────────────────────────────────────────────
+// ── createElement ──────────────────────────────────────────────────────────
 function createElement(type, props, ...children) {
-  const flatChildren = children.flat(Infinity).filter(c => c != null && c !== false && c !== true);
-  return {
-    type,
-    props: props || {},
-    children: flatChildren,
-    _vdom: true
-  };
+  const flat = children.flat(Infinity).filter(c => c !== null && c !== undefined && c !== false && c !== true);
+  return { _r: true, type, props: props || {}, children: flat };
 }
 
-const Fragment = Symbol('Fragment');
+const Fragment = ({ children }) => children;
 
-// ── Component instances ────────────────────────────────────────────────────
-const compMap = new WeakMap();
+// ── Mount / Reconcile ──────────────────────────────────────────────────────
+let _nodeCounter = 0;
 
-function renderComponent(vnode, domParent, domBefore) {
-  const {type, props, children} = vnode;
-  const allProps = {...props, children: children.length === 1 ? children[0] : children};
+function mount(vnode, parent, path, idx) {
+  const nodePath = path !== undefined ? path + '.' + idx : 'root';
 
-  let inst = vnode._inst;
-  if (!inst) {
-    inst = {hooks: [], pendingEffects: [], dom: null, vdom: null, props: allProps};
-    vnode._inst = inst;
-  }
-  inst.props = allProps;
-
-  currentComponent = inst;
-  hookIndex = 0;
-  let result;
-  try {
-    result = type(allProps);
-  } catch(e) {
-    console.error('Component error:', e);
-    return null;
-  }
-  currentComponent = null;
-
-  const newDom = reconcile(result, domParent, inst.dom, domBefore);
-  inst.dom = newDom;
-  inst.vdom = result;
-
-  // Run effects
-  if (inst.pendingEffects?.length) {
-    const effects = inst.pendingEffects;
-    inst.pendingEffects = [];
-    setTimeout(() => {
-      effects.forEach(({fn, slot}) => {
-        if (inst.hooks[slot]?.cleanup) inst.hooks[slot].cleanup();
-        const cleanup = fn();
-        inst.hooks[slot].cleanup = cleanup || null;
-      });
-    }, 0);
-  }
-
-  return newDom;
-}
-
-function reconcile(vnode, parent, existing, before) {
-  if (vnode == null || vnode === false) {
-    if (existing) parent.removeChild(existing);
-    return null;
-  }
+  if (vnode === null || vnode === undefined || vnode === false) return;
   if (typeof vnode === 'string' || typeof vnode === 'number') {
-    if (existing?.nodeType === 3) {
-      if (existing.textContent != vnode) existing.textContent = vnode;
-      return existing;
-    }
-    const t = document.createTextNode(String(vnode));
-    if (existing) parent.replaceChild(t, existing);
-    else if (before) parent.insertBefore(t, before);
-    else parent.appendChild(t);
-    return t;
+    parent.appendChild(document.createTextNode(String(vnode)));
+    return;
   }
   if (Array.isArray(vnode)) {
-    // Fragment-like
-    let dom = existing;
-    let frag = document.createDocumentFragment();
-    vnode.forEach(c => reconcile(c, frag, null, null));
-    if (existing) parent.replaceChild(frag, existing);
-    else if (before) parent.insertBefore(frag, before);
-    else parent.appendChild(frag);
-    return null;
+    vnode.forEach((c, i) => mount(c, parent, nodePath, i));
+    return;
   }
-  if (!vnode._vdom) return null;
+  if (!vnode._r) return;
 
-  const {type, props, children} = vnode;
-
-  // Fragment
-  if (type === Fragment || type === Symbol.for('react.fragment')) {
-    const arr = children.flat(Infinity).filter(Boolean);
-    arr.forEach(c => reconcile(c, parent, null, before));
-    return null;
-  }
+  const { type, props, children } = vnode;
 
   // Function component
   if (typeof type === 'function') {
-    vnode._inst = existing?._vnode?._inst;
-    const dom = renderComponent(vnode, parent, before);
-    if (existing && dom !== existing) {
-      if (existing.parentNode === parent) parent.removeChild(existing);
-    }
-    if (dom && !dom.parentNode) {
-      if (before) parent.insertBefore(dom, before);
-      else parent.appendChild(dom);
-    }
-    return dom;
+    const savedPath = _currentPath;
+    const savedIdx = _hookIndex;
+    _currentPath = nodePath + ':' + (type.name || 'fn');
+    _hookIndex = 0;
+    const allProps = { ...props, children: children.length === 1 ? children[0] : children };
+    let result;
+    try { result = type(allProps); } catch(e) { console.error('Component error in', type.name, e); result = null; }
+    _currentPath = savedPath;
+    _hookIndex = savedIdx;
+    mount(result, parent, nodePath, 0);
+    return;
   }
 
   // DOM element
-  let el;
-  const tag = typeof type === 'string' ? type : null;
-  if (!tag) return null;
-
-  if (existing?.tagName?.toLowerCase() === tag) {
-    el = existing;
-  } else {
-    el = document.createElement(tag);
-    if (existing) parent.replaceChild(el, existing);
-    else if (before) parent.insertBefore(el, before);
-    else parent.appendChild(el);
-  }
-
-  el._vnode = vnode;
+  if (typeof type !== 'string') return;
+  const el = document.createElement(type);
 
   // Apply props
-  const skip = new Set(['children','key','ref']);
-  // Clear old event listeners (simple: clone node is too heavy, track instead)
-  if (!el._listeners) el._listeners = {};
+  Object.entries(props).forEach(([k, v]) => {
+    if (k === 'children' || k === 'key') return;
+    if (v === null || v === undefined) return;
 
-  for (const [k, v] of Object.entries(props || {})) {
-    if (skip.has(k)) continue;
-    if (k === 'style' && typeof v === 'object') {
-      Object.assign(el.style, v);
-    } else if (k === 'className') {
-      el.className = v || '';
-    } else if (k === 'dangerouslySetInnerHTML') {
-      el.innerHTML = v.__html;
-    } else if (k.startsWith('on') && typeof v === 'function') {
-      const evt = k.slice(2).toLowerCase();
-      if (el._listeners[evt] && el._listeners[evt] !== v) {
-        el.removeEventListener(evt, el._listeners[evt]);
-      }
-      el._listeners[evt] = v;
+    if (k === 'ref') { if (v) v.current = el; return; }
+    if (k === 'style' && typeof v === 'object') { Object.assign(el.style, v); return; }
+    if (k === 'className') { el.className = v || ''; return; }
+    if (k === 'htmlFor') { el.setAttribute('for', v); return; }
+    if (k === 'dangerouslySetInnerHTML') { el.innerHTML = v.__html; return; }
+
+    if (k.startsWith('on') && typeof v === 'function') {
+      const evt = k[2].toLowerCase() + k.slice(3);
       el.addEventListener(evt, v);
-    } else if (k === 'htmlFor') {
-      el.setAttribute('for', v);
-    } else if (k === 'disabled') {
-      if (v) el.setAttribute('disabled', ''); else el.removeAttribute('disabled');
-    } else if (k === 'checked' || k === 'value') {
-      el[k] = v;
-    } else if (k === 'autoComplete') {
-      el.setAttribute('autocomplete', v);
-    } else if (k === 'autoCorrect') {
-      el.setAttribute('autocorrect', v);
-    } else if (k === 'spellCheck') {
-      el.setAttribute('spellcheck', String(v));
-    } else if (k === 'ref' && v) {
-      v.current = el;
-    } else if (typeof v === 'string' || typeof v === 'number') {
-      el.setAttribute(k.replace(/([A-Z])/g, '-$1').toLowerCase(), v);
+      return;
     }
-  }
 
-  // Reconcile children
-  const flat = children.flat(Infinity).filter(c => c != null && c !== false && c !== true);
-  const existingChildren = Array.from(el.childNodes);
-  flat.forEach((c, i) => reconcile(c, el, existingChildren[i] || null, null));
-  // Remove extra children
-  for (let i = flat.length; i < existingChildren.length; i++) {
-    if (existingChildren[i].parentNode === el) el.removeChild(existingChildren[i]);
-  }
+    // Boolean attrs
+    if (k === 'disabled') { if (v) el.disabled = true; return; }
+    if (k === 'checked') { el.checked = v; return; }
+    if (k === 'value') { el.value = v; return; }
+    if (k === 'placeholder') { el.placeholder = v; return; }
+    if (k === 'autoComplete') { el.setAttribute('autocomplete', v); return; }
+    if (k === 'autoCorrect') { el.setAttribute('autocorrect', v); return; }
+    if (k === 'spellCheck') { el.setAttribute('spellcheck', String(v)); return; }
+    if (k === 'tabIndex') { el.tabIndex = v; return; }
+    if (k === 'type') { el.type = v; return; }
 
-  return el;
-}
-
-// ── Update scheduler ──────────────────────────────────────────────────────
-const pending = new Set();
-let scheduled = false;
-function scheduleUpdate(comp) {
-  pending.add(comp);
-  if (!scheduled) {
-    scheduled = true;
-    Promise.resolve().then(flushUpdates);
-  }
-}
-function flushUpdates() {
-  scheduled = false;
-  const toUpdate = [...pending];
-  pending.clear();
-  toUpdate.forEach(comp => {
-    if (comp._root) {
-      comp._root._rerender();
+    if (typeof v === 'string' || typeof v === 'number') {
+      el.setAttribute(k, v);
     }
   });
+
+  // Mount children
+  children.forEach((c, i) => mount(c, el, nodePath, i));
+  parent.appendChild(el);
 }
 
 // ── createRoot ─────────────────────────────────────────────────────────────
 function createRoot(container) {
-  let rootVnode = null;
-  const root = {
+  return {
     render(element) {
-      rootVnode = element;
-      container.innerHTML = '';
-      const dom = reconcile(element, container, null, null);
-      this._lastDom = dom;
-    },
-    _rerender() {
-      if (rootVnode) {
-        reconcile(rootVnode, container, this._lastDom, null);
-      }
+      _rootContainer = container;
+      _rootElement = element;
+      rerender();
     }
   };
-  return root;
 }
 
-// ── Expose globals ─────────────────────────────────────────────────────────
+// ── Expose ─────────────────────────────────────────────────────────────────
 global.React = {
   createElement,
   Fragment,
@@ -313,12 +286,15 @@ global.React = {
   useMemo,
   useReducer,
   useRef,
-  createContext: () => ({Provider: ({children}) => children, _ctx: true}),
-  useContext: () => null,
+  createContext: (def) => {
+    const ctx = { _val: def, Provider: ({ value, children }) => { ctx._val = value; return children; } };
+    return ctx;
+  },
+  useContext: (ctx) => ctx._val,
   memo: (c) => c,
+  forwardRef: (fn) => fn,
   version: '18.2.0-mini',
 };
-
 global.ReactDOM = { createRoot };
 
 })(window);
@@ -1781,7 +1757,7 @@ function App() {
     const todayDone = todayW.length > 0 && todayW.every(w => prog[w.id]);
     const curCard = queue[cIdx], spellCard = queue[sIdx], revCard = rQueue[rIdx], wrCard = wrQueue[wrIdx];
     return (React.createElement("div", { style: { minHeight: "100vh", background: "#0d1117", color: "#e6edf3", fontFamily: "Georgia,serif", display: "flex", flexDirection: "column", alignItems: "center" } },
-        React.createElement("style", null, CSS),
+        /* CSS moved to <head> */
         React.createElement("div", { style: { width: "100%", maxWidth: 700, padding: "16px 16px 0", display: "flex", alignItems: "center", gap: 8 } },
             React.createElement("div", null,
                 React.createElement("div", { style: { fontFamily: "'Cinzel',serif", fontSize: "1.15rem", fontWeight: 900, color: "#f0c040", letterSpacing: ".05em" } }, "\u26A1 WizWord"),
