@@ -1,2208 +1,407 @@
 <!DOCTYPE html>
-
 <html lang="zh-TW">
 <head>
-  <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
-  <meta name="apple-mobile-web-app-capable" content="yes"/>
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
-  <meta name="apple-mobile-web-app-title" content="WizWord"/>
-  <meta name="theme-color" content="#0d1117"/>
-  <title>WizWord ⚡</title>
-  <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%230d1117'/><text y='.9em' font-size='72' x='14'>⚡</text></svg>"/>
-  <!-- Google Fonts - loads if available, gracefully degrades -->
-  <link rel="preconnect" href="https://fonts.googleapis.com"/>
-  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&display=swap" rel="stylesheet" media="print" onload="this.media='all'"/>
-  <style>
-    /* App CSS - static, never wiped */
-    *{box-sizing:border-box;margin:0;padding:0}
-    html,body,#root{min-height:100%;background:#0d1117}
-    body{-webkit-tap-highlight-color:transparent;overscroll-behavior-y:contain;color:#e6edf3;font-family:Georgia,serif}
-    #loading{display:flex;align-items:center;justify-content:center;min-height:100vh;background:#0d1117;color:#f0c040;font-family:monospace;font-size:1rem;flex-direction:column;gap:14px}
-    .bolt{font-size:2.5rem;animation:pu 1.2s ease-in-out infinite}
-    .txt{animation:pu 1.2s ease-in-out infinite;opacity:.8}
-    @keyframes pu{0%,100%{opacity:.3}50%{opacity:1}}
-
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<meta name="apple-mobile-web-app-title" content="WizWord"/>
+<meta name="theme-color" content="#0d1117"/>
+<title>WizWord ⚡</title>
+<link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%230d1117'/><text y='.9em' font-size='72' x='14'>⚡</text></svg>"/>
+<style>
 *{box-sizing:border-box;margin:0;padding:0}
-body{background:#0d1117}
-@keyframes spin{to{transform:rotate(360deg)}}
-@keyframes pop{0%{transform:scale(0.7)}60%{transform:scale(1.15)}100%{transform:scale(1)}}
+html,body{min-height:100%;background:#0d1117;color:#e6edf3;font-family:Georgia,serif}
+body{-webkit-tap-highlight-color:transparent;overscroll-behavior-y:contain}
 
-.pill{background:none;border:1px solid #30363d;border-radius:20px;padding:4px 11px;font-family:monospace;font-size:.62rem;cursor:pointer;color:#8b949e;transition:all .18s}
-.pill.on{background:#f0c040;border-color:#f0c040;color:#0d1117;font-weight:600}
+/* Screens */
+.screen{display:none;min-height:100vh;background:#0d1117}
+.screen.active{display:block}
+
+/* Nav */
+.nav{max-width:700px;margin:0 auto;padding:16px 16px 0;display:flex;align-items:center;gap:8px}
+.logo{font-size:1.15rem;font-weight:900;color:#f0c040;letter-spacing:.05em}
+.logo-sub{font-size:.5rem;color:#8b949e;letter-spacing:.08em;text-transform:uppercase}
+.nav-btns{margin-left:auto;display:flex;gap:4px}
+.nav-btn{background:none;border:1px solid #30363d;border-radius:20px;padding:4px 11px;font-family:monospace;font-size:.62rem;cursor:pointer;color:#8b949e;transition:all .18s}
+.nav-btn.on{background:#f0c040;border-color:#f0c040;color:#0d1117;font-weight:600}
+
+/* XP bar */
+.xp-bar{max-width:700px;margin:0 auto;padding:8px 16px 0;display:flex;align-items:center;gap:8px}
+.xp-track{flex:1;height:5px;background:#21262d;border-radius:3px;overflow:hidden}
+.xp-fill{height:100%;background:linear-gradient(90deg,#7c3aed,#f0c040);border-radius:3px;transition:width .5s}
 .badge{font-family:monospace;font-size:.6rem;padding:2px 8px;border-radius:20px;background:#21262d;border:1px solid #30363d;color:#f0c040;font-weight:600;white-space:nowrap}
+.xp-lbl{font-family:monospace;font-size:.56rem;color:#8b949e;white-space:nowrap}
+
+/* Main content area */
+.main{max-width:700px;margin:0 auto;padding:18px 16px 60px}
+
+/* Cards */
+.card{background:#161b22;border:1px solid #30363d;border-radius:16px;padding:20px;margin-bottom:12px}
+.card-purple{background:linear-gradient(135deg,#1c1033,#0d1117);border-color:#3d2e6b}
+
+/* Buttons */
+.btn{border:none;border-radius:12px;padding:12px 16px;font-family:Georgia,serif;font-size:.88rem;font-weight:700;cursor:pointer;transition:all .18s;display:block;text-align:center;width:100%;margin-bottom:8px}
+.btn-purple{background:linear-gradient(135deg,#7c3aed,#4f46e5);color:white;box-shadow:0 4px 18px rgba(124,58,237,.3)}
+.btn-purple:hover{transform:translateY(-2px)}
+.btn-purple:disabled{opacity:.35;cursor:not-allowed;transform:none}
+.btn-gold{background:linear-gradient(135deg,#f0c040,#c9903a);color:#0d1117}
+.btn-gold:disabled{opacity:.35;cursor:not-allowed}
+.btn-ghost{background:#161b22;border:1px solid #30363d;color:#c8d0da;font-family:monospace;font-size:.72rem}
+.btn-red{background:#2a0d0d;border:1.5px solid #ef4444;color:#ef4444}
+.btn-green{background:#0d2a0d;border:1.5px solid #22c55e;color:#22c55e}
+.btn-orange{background:#1a1208;border:1.5px solid #c9903a55;color:#c9903a}
+.btn-row{display:flex;gap:8px}
+.btn-row .btn{flex:1;margin-bottom:0}
+
+/* Typography */
+.word-big{font-family:Georgia,serif;font-size:2.6rem;font-weight:900;color:#f0c040;letter-spacing:.02em;line-height:1;margin-bottom:6px}
+.phonetic{font-family:monospace;font-size:.78rem;color:#8b949e;margin-bottom:3px}
+.pos{font-family:monospace;font-size:.64rem;color:#c9903a;letter-spacing:.07em;margin-bottom:12px}
+.meaning{font-family:Georgia,serif;font-size:1.7rem;font-weight:700;color:#f0c040;margin-bottom:8px}
+.example{font-family:Georgia,serif;font-style:italic;font-size:.9rem;color:#a0aab4;line-height:1.72}
+.example b{color:#f0c040;font-style:normal}
+.extrans{font-family:Georgia,serif;font-size:.78rem;color:#6a7a8a;line-height:1.6;padding-left:8px;border-left:2px solid #2a3545;margin-top:8px}
+.tag-hs{display:inline-block;font-family:monospace;font-size:.56rem;padding:2px 8px;border-radius:20px;background:#1a2a1a;border:1px solid #22c55e44;color:#22c55e;margin-bottom:12px}
+.tag-toefl{display:inline-block;font-family:monospace;font-size:.56rem;padding:2px 8px;border-radius:20px;background:#1a1a2e;border:1px solid #7c3aed44;color:#a78bfa;margin-bottom:12px}
+.divider{height:1px;background:#21262d;margin:14px 0}
+.section-label{font-family:monospace;font-size:.58rem;letter-spacing:.12em;text-transform:uppercase;color:#7c3aed;margin-bottom:8px}
+.muted{color:#8b949e;font-family:monospace;font-size:.64rem}
+.gold{color:#f0c040}
+.green{color:#22c55e}
+.red{color:#ef4444}
+.purple{color:#a78bfa}
+
+/* Stat boxes */
+.stat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
+.stat-box{background:#161b22;border:1px solid #30363d;border-radius:10px;padding:12px;text-align:center}
+.stat-val{font-family:Georgia,serif;font-size:1.5rem;font-weight:700;color:#f0c040}
+.stat-lbl{font-family:monospace;font-size:.54rem;color:#8b949e;text-transform:uppercase;letter-spacing:.05em;margin-top:2px}
+
+/* Daily dots */
+.daily-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-bottom:16px}
+.daily-dot{aspect-ratio:1;border-radius:8px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:monospace;font-size:.68rem;padding:5px;gap:2px;border:1.5px solid #30363d;background:#161b22;color:#8b949e}
+.daily-dot.done{border-color:#22c55e44;background:#0d2a0d;color:#22c55e}
+.daily-dot.pending{border-color:#c9903a77;background:#1a1208;color:#f0c040}
+.daily-dot-word{font-size:.4rem;opacity:.7;word-break:break-all;text-align:center}
+
+/* Flash card */
+.flash-card{background:#161b22;border:1px solid #30363d;border-radius:20px;padding:24px;margin-bottom:12px;position:relative}
+.flash-card-back{background:linear-gradient(160deg,#1c1033,#0f0a1e);border-color:#3d2e6b;text-align:center;padding:32px 24px}
+.card-hint{font-family:monospace;font-size:.56rem;color:#2a3545;text-align:right;margin-top:12px}
+.speak-row{display:flex;gap:7px;flex-wrap:wrap;margin-top:10px}
+.speak-btn{background:none;border:1.5px solid #30363d;border-radius:20px;padding:5px 12px;font-family:monospace;font-size:.6rem;cursor:pointer;color:#8b949e;transition:all .18s;display:inline-flex;align-items:center;gap:4px;white-space:nowrap}
+.speak-btn:hover{border-color:#f0c040;color:#f0c040}
+
+/* Progress dots (cards) */
+.prog-dots{display:flex;gap:5px;align-items:center}
+.prog-dot{width:7px;height:7px;border-radius:50%;background:#30363d;transition:all .25s}
+.prog-dot.seen{background:#22c55e;box-shadow:0 0 4px #22c55e66}
+.prog-dot.current{background:#f0c040;box-shadow:0 0 6px #f0c04099}
+
+/* Progress bar */
+.prog-bar{height:3px;background:#21262d;border-radius:2px;margin-bottom:14px;overflow:hidden}
+.prog-bar-fill{height:100%;border-radius:2px;background:linear-gradient(90deg,#22c55e,#f0c040);transition:width .4s}
+
+/* Phase header */
+.phase-hdr{display:flex;align-items:center;gap:7px;margin-bottom:12px;flex-wrap:wrap}
+.back-btn{background:#161b22;border:1px solid #30363d;border-radius:8px;padding:5px 11px;font-family:monospace;font-size:.64rem;cursor:pointer;color:#8b949e}
+.back-btn:hover{border-color:#f0c040;color:#f0c040}
+.ptag{font-family:monospace;font-size:.6rem;padding:3px 8px;border-radius:4px}
+.ptag-purple{background:#1a1a2e;border:1px solid #7c3aed44;color:#a78bfa}
+.ptag-green{background:#1a2a1a;border:1px solid #22c55e44;color:#22c55e}
+.ptag-red{background:#1a0808;border:1px solid #ef444444;color:#ef4444}
+.combo{font-family:monospace;font-size:.66rem;font-weight:600;padding:3px 8px;border-radius:20px;background:#1a1a2e;border:1px solid #7c3aed55;color:#a78bfa}
+.prog-lbl{margin-left:auto;font-family:monospace;font-size:.66rem;color:#8b949e}
+
+/* Spell input */
+.letter-boxes{display:flex;justify-content:center;gap:4px;flex-wrap:wrap;margin-bottom:14px}
+.lbox{width:30px;height:38px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-family:Georgia,serif;font-size:.9rem;font-weight:700;border:1.5px solid #30363d;background:#21262d;color:#e6edf3;transition:all .2s}
+.lbox.filled{border-color:#7c3aed;color:#a78bfa;background:#1a1a2e}
+.lbox.correct{border-color:#22c55e;color:#22c55e;background:#0d2a0d}
+.lbox.wrong{border-color:#ef4444;color:#ef4444;background:#2a0d0d}
+.spell-input{width:100%;background:#21262d;border:2px solid #30363d;border-radius:12px;padding:13px 15px;font-family:Georgia,serif;font-size:1.15rem;color:#e6edf3;text-align:center;letter-spacing:.08em;outline:none;transition:border-color .2s}
+.spell-input:focus{border-color:#7c3aed}
+.spell-input.correct{border-color:#22c55e;background:#0d2a0d}
+.spell-input.wrong{border-color:#ef4444;background:#2a0d0d}
+.result-msg{margin-top:10px;font-family:monospace;font-size:.8rem;line-height:1.6;text-align:center}
+
+/* Streak */
+.streak-card{border-radius:16px;padding:18px;margin-bottom:12px;position:relative;overflow:hidden}
+.streak-num{font-family:Georgia,serif;font-size:2.2rem;font-weight:900;color:#f0c040;line-height:1}
+.streak-sub{font-family:Georgia,serif;font-size:.82rem;color:#c9903a;margin-top:3px}
+.week-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:5px;margin-top:14px}
+.week-day-lbl{font-family:monospace;font-size:.54rem;text-align:center;color:#4a5568;margin-bottom:4px}
+.week-day-lbl.today{color:#f0c040;font-weight:700}
+.week-circle{width:32px;height:32px;border-radius:50%;margin:0 auto;display:flex;align-items:center;justify-content:center;font-size:.78rem;font-weight:700;border:2px solid #21262d;background:#161b22;color:#21262d}
+.week-circle.checked{background:linear-gradient(135deg,#c9903a,#f0c040);border-color:transparent;color:#0d1117;box-shadow:0 2px 10px rgba(240,192,64,.35)}
+.week-circle.today-empty{border:2px dashed #c9903a55;color:#3d4a5a}
+
+/* Novel */
+.novel-card{background:#0e1219;border:1px solid #21262d;border-radius:14px;padding:16px;margin-bottom:10px}
+.novel-card.unlocked{background:linear-gradient(135deg,#1c1033,#0f0a1e);border-color:#3d2e6b}
+.novel-emoji{font-size:1.8rem;opacity:.3}
+.novel-emoji.unlocked{opacity:1}
+.novel-title{font-family:Georgia,serif;font-size:.9rem;font-weight:700;color:#3d4a5a}
+.novel-title.unlocked{color:#f0c040}
+.novel-sub{font-family:monospace;font-size:.54rem;color:#2a3545}
+.novel-sub.unlocked{color:#7c3aed}
+.btn-sm-purple{background:linear-gradient(135deg,#7c3aed,#4f46e5);color:white;border:none;border-radius:8px;padding:6px 14px;font-family:Georgia,serif;font-size:.76rem;font-weight:700;cursor:pointer;white-space:nowrap}
+
+/* Ebbinghaus pills */
+.ebbi-pills{display:flex;gap:4px;flex-wrap:wrap;margin-top:8px}
+.ebbi-pill{font-family:monospace;font-size:.56rem;padding:2px 6px;border-radius:3px;background:#21262d;border:1px solid #30363d;color:#8b949e}
+.ebbi-pill.first{background:#7c3aed22;border-color:#7c3aed44;color:#a78bfa}
+
+/* Filter */
+.filter-row{display:flex;gap:5px;margin-bottom:12px}
 .filt{background:#161b22;border:1px solid #30363d;border-radius:8px;padding:5px 11px;font-family:monospace;font-size:.66rem;cursor:pointer;color:#8b949e;transition:all .15s}
 .filt.on{background:#7c3aed;border-color:#7c3aed;color:white}
 
-.btn{border:none;border-radius:12px;padding:12px 17px;font-family:‘Georgia’,serif;font-size:.84rem;font-weight:700;cursor:pointer;letter-spacing:.04em;transition:all .18s;display:block;text-align:center}
-.btn-purple{background:linear-gradient(135deg,#7c3aed,#4f46e5);color:white;box-shadow:0 4px 18px rgba(124,58,237,.3)}
-.btn-purple:hover{transform:translateY(-2px);box-shadow:0 6px 26px rgba(124,58,237,.45)}
-.btn-purple:disabled{opacity:.35;cursor:not-allowed;transform:none!important}
-.btn-gold{background:linear-gradient(135deg,#f0c040,#c9903a);color:#0d1117;box-shadow:0 4px 16px rgba(240,192,64,.2)}
-.btn-gold:hover{transform:translateY(-2px)}
-.btn-gold:disabled{opacity:.35;cursor:not-allowed;transform:none!important}
-.btn-red{background:#2a0d0d;border:1.5px solid #ef4444;color:#ef4444;font-family:‘Georgia’,serif;font-size:.84rem;font-weight:700;padding:12px;border-radius:12px;cursor:pointer;transition:all .18s;letter-spacing:.04em}
-.btn-red:hover{background:#3a1010}
-.btn-red-soft{background:#1a0808;border:1.5px solid #ef444455;color:#ef4444;font-family:‘Georgia’,serif;font-size:.82rem;font-weight:700;padding:11px 17px;border-radius:12px;cursor:pointer;transition:all .18s;letter-spacing:.04em;display:block;text-align:center}
-.btn-red-soft:hover{border-color:#ef4444;background:#2a0d0d}
-.btn-red-soft:disabled{opacity:.35;cursor:not-allowed}
-.btn-green{background:#0d2a0d;border:1.5px solid #22c55e;color:#22c55e;font-family:‘Georgia’,serif;font-size:.84rem;font-weight:700;padding:12px;border-radius:12px;cursor:pointer;transition:all .18s;letter-spacing:.04em}
-.btn-green:hover{background:#103a10}
-.btn-ghost{background:#161b22;border:1px solid #30363d;color:#c8d0da;font-family:monospace;font-size:.7rem;letter-spacing:.02em;padding:9px 13px;border-radius:12px;cursor:pointer;transition:all .18s}
-.btn-ghost:hover{border-color:#8b949e}
-.btn-ghost:disabled{opacity:.25;cursor:not-allowed}
-.btn-sm-purple{background:linear-gradient(135deg,#7c3aed,#4f46e5);color:white;border:none;border-radius:8px;padding:6px 13px;font-family:‘Georgia’,serif;font-size:.74rem;font-weight:700;cursor:pointer;letter-spacing:.04em;white-space:nowrap;transition:all .18s}
-.btn-sm-purple:hover{transform:translateY(-1px)}
+/* Done screen */
+.done-card{background:#161b22;border:1px solid #30363d;border-radius:20px;padding:36px 26px;text-align:center}
+.done-stars{font-size:2.2rem;letter-spacing:4px;margin-bottom:12px}
+.done-title{font-family:Georgia,serif;font-size:1.6rem;font-weight:900;color:#f0c040;margin-bottom:6px}
+.done-xp{font-family:monospace;font-size:2rem;font-weight:700;color:#7c3aed;margin-bottom:2px}
+.done-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px;margin-bottom:18px}
+.done-stat{background:#21262d;border-radius:9px;padding:11px}
+.done-stat-val{font-family:Georgia,serif;font-size:1.4rem;font-weight:700;margin-bottom:2px}
+.done-stat-lbl{font-family:monospace;font-size:.52rem;color:#8b949e;text-transform:uppercase}
 
-.back{background:#161b22;border:1px solid #30363d;border-radius:8px;padding:5px 11px;font-family:monospace;font-size:.64rem;cursor:pointer;color:#8b949e;transition:all .15s}
-.back:hover{border-color:#f0c040;color:#f0c040}
+/* Unlock banner */
+.unlock-banner{background:linear-gradient(135deg,#1c1033,#0f0a1e);border:2px solid #7c3aed;border-radius:20px;padding:28px;text-align:center;margin-bottom:14px;box-shadow:0 0 40px rgba(124,58,237,.4)}
 
-.phdr{display:flex;align-items:center;gap:6px;margin-bottom:12px;flex-wrap:wrap}
-.ptag{font-family:monospace;font-size:.6rem;padding:3px 8px;border-radius:4px}
-.ptag.purple{background:#1a1a2e;border:1px solid #7c3aed44;color:#a78bfa}
-.ptag.green{background:#1a2a1a;border:1px solid #22c55e44;color:#22c55e}
-.ptag.red{background:#1a0808;border:1px solid #ef444444;color:#ef4444}
-.combo{font-family:monospace;font-size:.66rem;font-weight:600;padding:3px 8px;border-radius:20px;background:#1a1a2e;border:1px solid #7c3aed55;color:#a78bfa}
+/* Scramble */
+.token-bank{display:flex;flex-wrap:wrap;gap:7px;background:#161b22;border-radius:14px;padding:14px;border:1px solid #30363d;margin-bottom:10px}
+.token{background:linear-gradient(135deg,#1a2a1a,#0f1e0f);border:1.5px solid #22c55e55;border-radius:8px;padding:7px 13px;font-family:Georgia,serif;font-size:.9rem;color:#c8d0da;cursor:pointer;user-select:none;transition:all .2s}
+.token.used{background:#21262d;border-color:#21262d;color:#2a3545;text-decoration:line-through;opacity:.4;cursor:default}
+.answer-tray{background:#0d1117;border:2px solid #21262d;border-radius:14px;padding:14px;min-height:64px;display:flex;flex-wrap:wrap;gap:6px;align-items:flex-start;margin-bottom:10px;position:relative;transition:border-color .3s}
+.answer-tray.correct{border-color:#22c55e}
+.answer-tray.wrong{border-color:#ef4444}
+.answer-tray-hint{font-family:monospace;font-size:.6rem;color:#2a3545;position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);white-space:nowrap}
+.placed-token{background:linear-gradient(135deg,#1a1a2e,#12112a);border:1.5px solid #7c3aed66;border-radius:8px;padding:6px 12px;font-family:Georgia,serif;font-size:.88rem;color:#c8d0da;cursor:pointer;user-select:none;transition:all .15s}
+.placed-token.correct{background:#0d2a0d;border-color:#22c55e;color:#22c55e}
+.placed-token.wrong{background:#2a0d0d;border-color:#ef4444;color:#ef4444}
 
-@media(max-width:480px){
-.btn{padding:10px 13px;font-size:.78rem}
-.pill{padding:3px 8px;font-size:.58rem}
-}
+/* Spell 5-dot progress */
+.spell-prog{display:flex;gap:6px;justify-content:center;margin-bottom:12px}
+.spell-prog-dot{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.75rem;font-weight:700;border:2px solid #21262d;background:#161b22;color:#2a3545;transition:all .3s}
+.spell-prog-dot.done{background:linear-gradient(135deg,#22c55e,#16a34a);border-color:transparent;color:#fff;box-shadow:0 0 8px #22c55e66}
+.spell-prog-dot.current{border-color:#7c3aed;color:#a78bfa;background:#1a1a2e}
 
-  </style>
+/* Stats chart */
+.lv-chart{display:flex;gap:5px;align-items:flex-end;height:68px;margin-bottom:24px}
+.lv-col{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px}
+.lv-bar{width:100%;border-radius:3px 3px 0 0;transition:height .5s;background:#21262d}
+.lv-bar.has{background:linear-gradient(to top,#7c3aed,#f0c040)}
+.lv-lbl{font-family:monospace;font-size:.48rem;color:#8b949e}
+
+@keyframes spin{to{transform:rotate(360deg)}}
+@media(max-width:480px){.btn{padding:10px 13px;font-size:.8rem}}
+</style>
+
 </head>
 <body>
-  <div id="loading"><div class="bolt">⚡</div><div class="txt">載入魔法單字庫…</div></div>
-  <div id="root"></div>
 
-  <script>
-// MiniReact v2 - fixed event handling and re-render
-(function(global) {
-"use strict";
+<!-- SCREENS -->
 
-// ── State ──────────────────────────────────────────────────────────────────
-let _rootContainer = null;
-let _rootElement = null;
-let _rendering = false;
+<div id="s-home" class="screen active">
+  <div class="nav">
+    <div><div class="logo">⚡ WizWord</div><div class="logo-sub">Ebbinghaus · Harry Potter</div></div>
+    <div class="nav-btns">
+      <button class="nav-btn on" onclick="showScreen('home')">首頁</button>
+      <button class="nav-btn" onclick="showScreen('library')">📚</button>
+      <button class="nav-btn" onclick="showScreen('stats')">統計</button>
+    </div>
+  </div>
+  <div id="xp-bar-home" class="xp-bar"></div>
+  <div class="main" id="home-main"></div>
+</div>
 
-function rerender() {
-  if (_rendering || !_rootContainer || !_rootElement) return;
-  _rendering = true;
-  try {
-    _rootContainer.innerHTML = '';
-    mount(_rootElement, _rootContainer);
-  } finally {
-    _rendering = false;
-  }
-  // Run pending effects after render
-  flushEffects();
-}
+<div id="s-cards" class="screen">
+  <div class="nav">
+    <div><div class="logo">⚡ WizWord</div></div>
+    <div class="nav-btns"><button class="nav-btn" onclick="showScreen('home')">首頁</button></div>
+  </div>
+  <div class="main" id="cards-main"></div>
+</div>
 
-// Schedule a re-render (batched)
-let _scheduled = false;
-function schedule() {
-  if (_scheduled) return;
-  _scheduled = true;
-  Promise.resolve().then(() => { _scheduled = false; rerender(); });
-}
+<div id="s-spell" class="screen">
+  <div class="nav">
+    <div><div class="logo">⚡ WizWord</div></div>
+    <div class="nav-btns"><button class="nav-btn" onclick="showScreen('home')">首頁</button></div>
+  </div>
+  <div class="main" id="spell-main"></div>
+</div>
 
-// ── Hooks storage ──────────────────────────────────────────────────────────
-// Components are identified by a path string through the tree
-let _currentPath = '';
-let _hookIndex = 0;
-const _store = {}; // path -> { hooks: [], effects: [] }
+<div id="s-review" class="screen">
+  <div class="nav">
+    <div><div class="logo">⚡ WizWord</div></div>
+    <div class="nav-btns"><button class="nav-btn" onclick="showScreen('home')">首頁</button></div>
+  </div>
+  <div class="main" id="review-main"></div>
+</div>
 
-function getStore() {
-  if (!_store[_currentPath]) _store[_currentPath] = { hooks: [], effects: [] };
-  return _store[_currentPath];
-}
+<div id="s-wrongreview" class="screen">
+  <div class="nav">
+    <div><div class="logo">⚡ WizWord</div></div>
+    <div class="nav-btns"><button class="nav-btn" onclick="showScreen('home')">首頁</button></div>
+  </div>
+  <div class="main" id="wrongreview-main"></div>
+</div>
 
-function useState(init) {
-  const path = _currentPath;
-  const idx = _hookIndex++;
-  const store = getStore();
-  if (store.hooks[idx] === undefined) {
-    store.hooks[idx] = typeof init === 'function' ? init() : init;
-  }
-  const setState = (val) => {
-    const next = typeof val === 'function' ? val(store.hooks[idx]) : val;
-    if (next !== store.hooks[idx]) {
-      store.hooks[idx] = next;
-      schedule();
-    }
-  };
-  return [store.hooks[idx], setState];
-}
+<div id="s-scramble" class="screen">
+  <div class="nav">
+    <div><div class="logo">⚡ WizWord</div></div>
+    <div class="nav-btns"><button class="nav-btn" onclick="showScreen('home')">首頁</button></div>
+  </div>
+  <div class="main" id="scramble-main"></div>
+</div>
 
-function useReducer(reducer, initArg, initFn) {
-  const init = initFn ? initFn(initArg) : initArg;
-  const [state, setState] = useState(init);
-  const dispatch = (action) => setState(s => reducer(s, action));
-  return [state, dispatch];
-}
+<div id="s-done" class="screen">
+  <div class="nav">
+    <div><div class="logo">⚡ WizWord</div></div>
+    <div class="nav-btns"><button class="nav-btn" onclick="showScreen('home')">首頁</button></div>
+  </div>
+  <div class="main" id="done-main"></div>
+</div>
 
-function useRef(init) {
-  const store = getStore();
-  const idx = _hookIndex++;
-  if (store.hooks[idx] === undefined) store.hooks[idx] = { current: init };
-  return store.hooks[idx];
-}
+<div id="s-library" class="screen">
+  <div class="nav">
+    <div><div class="logo">⚡ WizWord</div></div>
+    <div class="nav-btns">
+      <button class="nav-btn" onclick="showScreen('home')">首頁</button>
+      <button class="nav-btn on">📚</button>
+      <button class="nav-btn" onclick="showScreen('stats')">統計</button>
+    </div>
+  </div>
+  <div class="main" id="library-main"></div>
+</div>
 
-function useCallback(fn, deps) {
-  return useMemo(() => fn, deps);
-}
+<div id="s-novel" class="screen">
+  <div class="nav">
+    <div><div class="logo">⚡ WizWord</div></div>
+    <div class="nav-btns"><button class="nav-btn" onclick="showScreen('library')">← 書庫</button></div>
+  </div>
+  <div class="main" id="novel-main"></div>
+</div>
 
-function useMemo(fn, deps) {
-  const store = getStore();
-  const idx = _hookIndex++;
-  const prev = store.hooks[idx];
-  const changed = !prev || !deps || deps.some((d, i) => !Object.is(d, prev.deps[i]));
-  if (changed) store.hooks[idx] = { val: fn(), deps: deps || [] };
-  return store.hooks[idx].val;
-}
+<div id="s-stats" class="screen">
+  <div class="nav">
+    <div><div class="logo">⚡ WizWord</div></div>
+    <div class="nav-btns">
+      <button class="nav-btn" onclick="showScreen('home')">首頁</button>
+      <button class="nav-btn on">統計</button>
+    </div>
+  </div>
+  <div class="main" id="stats-main"></div>
+</div>
 
-const _pendingEffects = [];
-function useEffect(fn, deps) {
-  const store = getStore();
-  const idx = _hookIndex++;
-  const prev = store.hooks[idx];
-  const changed = !prev || !deps || deps.some((d, i) => !Object.is(d, (prev.deps||[])[i]));
-  if (changed) {
-    store.hooks[idx] = { deps: deps || [], fn, cleanup: prev?.cleanup || null };
-    _pendingEffects.push({ entry: store.hooks[idx] });
-  }
-}
+<script>
+// 1. 基礎畫面切換邏輯
+function showScreen(screenName) {
+  // 隱藏所有畫面
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  // 顯示目標畫面
+  const target = document.getElementById('s-' + screenName);
+  if (target) target.classList.add('active');
 
-function flushEffects() {
-  const toRun = _pendingEffects.splice(0);
-  toRun.forEach(({ entry }) => {
-    if (entry.cleanup) { try { entry.cleanup(); } catch(e) {} }
-    try { entry.cleanup = entry.fn() || null; } catch(e) { console.error(e); }
+  // 更新導覽列按鈕狀態
+  document.querySelectorAll('.nav-btn').forEach(btn => {
+    if (btn.innerText === '首頁' && screenName === 'home') btn.classList.add('on');
+    else if (btn.innerText === '📚' && screenName === 'library') btn.classList.add('on');
+    else if (btn.innerText === '統計' && screenName === 'stats') btn.classList.add('on');
+    else btn.classList.remove('on');
   });
 }
 
-// ── createElement ──────────────────────────────────────────────────────────
-function createElement(type, props, ...children) {
-  const flat = children.flat(Infinity).filter(c => c !== null && c !== undefined && c !== false && c !== true);
-  return { _r: true, type, props: props || {}, children: flat };
+// 2. 初始化範例內容（填補原本為空的 id="...-main" 區塊）
+function initApp() {
+  // 填補首頁內容
+  document.getElementById('home-main').innerHTML = `
+    <div class="card card-purple">
+      <div class="word-big">Expecto Patronum</div>
+      <div class="phonetic">/ɛkˈspɛktoʊ pəˈtroʊnəm/</div>
+      <div class="pos">SPELL</div>
+      <div class="meaning">呼神護衛</div>
+      <div class="example">Harry conjured a powerful stag Patronus to drive away the Dementors.</div>
+    </div>
+    <button class="btn btn-purple" onclick="showScreen('cards')">開始翻卡複習</button>
+    <button class="btn btn-gold" onclick="showScreen('spell')">拼字挑戰</button>
+  `;
+
+  // 填補經驗值條
+  document.getElementById('xp-bar-home').innerHTML = `
+    <div class="badge">LV 12</div>
+    <div class="xp-track"><div class="xp-fill" style="width: 65%;"></div></div>
+    <div class="xp-lbl">325 / 500 XP</div>
+  `;
+
+  // 填補卡片複習畫面
+  document.getElementById('cards-main').innerHTML = `
+    <div class="phase-hdr">
+      <button class="back-btn" onclick="showScreen('home')">←</button>
+      <span class="ptag ptag-purple">卡片模式</span>
+      <span class="prog-lbl">1 / 5</span>
+    </div>
+    <div class="prog-bar"><div class="prog-bar-fill" style="width: 20%;"></div></div>
+    <div class="flash-card">
+      <div class="word-big">Wand</div>
+      <div class="phonetic">/wɑːnd/</div>
+      <div class="pos">NOUN</div>
+      <div class="divider"></div>
+      <button class="btn btn-purple" onclick="this.nextElementSibling.style.display='block'">點擊顯示釋義</button>
+      <div class="flash-card-back" style="display:none; margin-top:15px;">
+        <div class="meaning">魔杖</div>
+        <div class="example">The <b>wand</b> chooses the wizard.</div>
+      </div>
+    </div>
+  `;
+
+  // 填補拼字畫面
+  document.getElementById('spell-main').innerHTML = `
+    <div class="phase-hdr">
+      <button class="back-btn" onclick="showScreen('home')">←</button>
+      <span class="ptag ptag-green">拼字練習</span>
+    </div>
+    <div class="card">
+      <div class="meaning">魔法、巫術</div>
+      <div class="divider"></div>
+      <div class="letter-boxes">
+        <div class="lbox filled">M</div>
+        <div class="lbox filled">A</div>
+        <div class="lbox filled">G</div>
+        <div class="lbox filled">I</div>
+        <div class="lbox"></div>
+      </div>
+      <input type="text" class="spell-input" placeholder="輸入單字補全" value="magi" autofocus/>
+    </div>
+  `;
+
+  // 填補統計畫面
+  document.getElementById('stats-main').innerHTML = `
+    <div class="stat-grid">
+      <div class="stat-box"><div class="stat-val">154</div><div class="stat-lbl">已學單字</div></div>
+      <div class="stat-box"><div class="stat-val">12</div><div class="stat-lbl">連續天數</div></div>
+      <div class="stat-box"><div class="stat-val">88%</div><div class="stat-lbl">正確率</div></div>
+    </div>
+    <div class="card">
+      <div class="section-label">每週學習進度</div>
+      <div class="lv-chart">
+        <div class="lv-col"><div class="lv-bar has" style="height:40px;"></div><div class="lv-lbl">一</div></div>
+        <div class="lv-col"><div class="lv-bar has" style="height:60px;"></div><div class="lv-lbl">二</div></div>
+        <div class="lv-col"><div class="lv-bar has" style="height:20px;"></div><div class="lv-lbl">三</div></div>
+        <div class="lv-col"><div class="lv-bar has" style="height:55px;"></div><div class="lv-lbl">四</div></div>
+        <div class="lv-col"><div class="lv-bar has" style="height:68px;"></div><div class="lv-lbl">五</div></div>
+        <div class="lv-col"><div class="lv-bar" style="height:0px;"></div><div class="lv-lbl">六</div></div>
+        <div class="lv-col"><div class="lv-bar" style="height:0px;"></div><div class="lv-lbl">日</div></div>
+      </div>
+    </div>
+  `;
 }
 
-const Fragment = ({ children }) => children;
-
-// ── Mount / Reconcile ──────────────────────────────────────────────────────
-let _nodeCounter = 0;
-
-function mount(vnode, parent, path, idx) {
-  const nodePath = path !== undefined ? path + '.' + idx : 'root';
-
-  if (vnode === null || vnode === undefined || vnode === false) return;
-  if (typeof vnode === 'string' || typeof vnode === 'number') {
-    parent.appendChild(document.createTextNode(String(vnode)));
-    return;
-  }
-  if (Array.isArray(vnode)) {
-    vnode.forEach((c, i) => mount(c, parent, nodePath, i));
-    return;
-  }
-  if (!vnode._r) return;
-
-  const { type, props, children } = vnode;
-
-  // Function component
-  if (typeof type === 'function') {
-    const savedPath = _currentPath;
-    const savedIdx = _hookIndex;
-    _currentPath = nodePath + ':' + (type.name || 'fn');
-    _hookIndex = 0;
-    const allProps = { ...props, children: children.length === 1 ? children[0] : children };
-    let result;
-    try { result = type(allProps); } catch(e) { console.error('Component error in', type.name, e); result = null; }
-    _currentPath = savedPath;
-    _hookIndex = savedIdx;
-    mount(result, parent, nodePath, 0);
-    return;
-  }
-
-  // DOM element
-  if (typeof type !== 'string') return;
-  const el = document.createElement(type);
-
-  // Apply props
-  Object.entries(props).forEach(([k, v]) => {
-    if (k === 'children' || k === 'key') return;
-    if (v === null || v === undefined) return;
-
-    if (k === 'ref') { if (v) v.current = el; return; }
-    if (k === 'style' && typeof v === 'object') { Object.assign(el.style, v); return; }
-    if (k === 'className') { el.className = v || ''; return; }
-    if (k === 'htmlFor') { el.setAttribute('for', v); return; }
-    if (k === 'dangerouslySetInnerHTML') { el.innerHTML = v.__html; return; }
-
-    if (k.startsWith('on') && typeof v === 'function') {
-      const evt = k[2].toLowerCase() + k.slice(3);
-      el.addEventListener(evt, v);
-      return;
-    }
-
-    // Boolean attrs
-    if (k === 'disabled') { if (v) el.disabled = true; return; }
-    if (k === 'checked') { el.checked = v; return; }
-    if (k === 'value') { el.value = v; return; }
-    if (k === 'placeholder') { el.placeholder = v; return; }
-    if (k === 'autoComplete') { el.setAttribute('autocomplete', v); return; }
-    if (k === 'autoCorrect') { el.setAttribute('autocorrect', v); return; }
-    if (k === 'spellCheck') { el.setAttribute('spellcheck', String(v)); return; }
-    if (k === 'tabIndex') { el.tabIndex = v; return; }
-    if (k === 'type') { el.type = v; return; }
-
-    if (typeof v === 'string' || typeof v === 'number') {
-      el.setAttribute(k, v);
-    }
-  });
-
-  // Mount children
-  children.forEach((c, i) => mount(c, el, nodePath, i));
-  parent.appendChild(el);
-}
-
-// ── createRoot ─────────────────────────────────────────────────────────────
-function createRoot(container) {
-  return {
-    render(element) {
-      _rootContainer = container;
-      _rootElement = element;
-      rerender();
-    }
-  };
-}
-
-// ── Expose ─────────────────────────────────────────────────────────────────
-global.React = {
-  createElement,
-  Fragment,
-  useState,
-  useEffect,
-  useCallback,
-  useMemo,
-  useReducer,
-  useRef,
-  createContext: (def) => {
-    const ctx = { _val: def, Provider: ({ value, children }) => { ctx._val = value; return children; } };
-    return ctx;
-  },
-  useContext: (ctx) => ctx._val,
-  memo: (c) => c,
-  forwardRef: (fn) => fn,
-  version: '18.2.0-mini',
-};
-global.ReactDOM = { createRoot };
-
-})(window);
-
-  </script>
-
-  <script>
-"use strict";
-const { useState, useEffect, useCallback, useRef } = React;
-// ─── Vocabulary (with example Chinese translations) ───────────────────────────
-const ALL_WORDS = [
-    { id: "h001", word: "courage", phonetic: "/ˈkʌrɪdʒ/", pos: "n.", meaning: "勇氣", tag: "高中",
-        example: "It takes a great deal of courage to stand up to our enemies, but a great deal more to stand up to our friends.",
-        exTrans: "對抗敵人需要很大的勇氣，但對抗朋友則需要更大的勇氣。" },
-    { id: "h002", word: "wisdom", phonetic: "/ˈwɪzdəm/", pos: "n.", meaning: "智慧；學識", tag: "高中",
-        example: "It is our choices that show what we truly are, far more than our abilities.",
-        exTrans: "真正展現我們本質的，是我們的選擇，而非我們的能力。" },
-    { id: "h003", word: "sacrifice", phonetic: "/ˈsækrɪfaɪs/", pos: "v./n.", meaning: "犧牲；祭品", tag: "高中",
-        example: "Lily Potter made the ultimate sacrifice for her son, and that ancient magic protected Harry for years.",
-        exTrans: "莉莉·波特為兒子做出了最終犧牲，那古老的魔法因此保護了哈利多年。" },
-    { id: "h004", word: "imagination", phonetic: "/ɪˌmædʒɪˈneɪʃn/", pos: "n.", meaning: "想像力；想像", tag: "高中",
-        example: "Of course it is happening inside your head, Harry, but why on earth should that mean it is not real?",
-        exTrans: "當然，這發生在你的腦海裡，哈利，但這又怎麼說明它不是真實的呢？" },
-    { id: "h005", word: "determine", phonetic: "/dɪˈtɜːmɪn/", pos: "v.", meaning: "決定；查明", tag: "高中",
-        example: "Harry was determined to find the remaining Horcruxes and determine a way to destroy each one.",
-        exTrans: "哈利下定決心要找出剩餘的魂器，並想辦法逐一摧毀它們。" },
-    { id: "h006", word: "patience", phonetic: "/ˈpeɪʃns/", pos: "n.", meaning: "耐心；忍耐", tag: "高中",
-        example: "Dumbledore watched Harry with great patience, waiting calmly for the boy to find his own words.",
-        exTrans: "鄧不利多以極大的耐心注視著哈利，平靜地等待這個男孩找到自己的言語。" },
-    { id: "h007", word: "influence", phonetic: "/ˈɪnfluəns/", pos: "n./v.", meaning: "影響；影響力", tag: "高中",
-        example: "Voldemort's influence over the Ministry was growing, and fear of his name spread across the wizarding world.",
-        exTrans: "佛地魔對魔法部的影響力日益擴大，對他名字的恐懼在巫師界蔓延。" },
-    { id: "h008", word: "tradition", phonetic: "/trəˈdɪʃn/", pos: "n.", meaning: "傳統；慣例", tag: "高中",
-        example: "The Sorting Ceremony is a Hogwarts tradition held every year on the first night of term.",
-        exTrans: "分院典禮是霍格華茲的傳統，每年在學期第一個夜晚舉行。" },
-    { id: "h009", word: "independent", phonetic: "/ˌɪndɪˈpendənt/", pos: "adj.", meaning: "獨立的；自主的", tag: "高中",
-        example: "Hermione was fiercely independent and refused to let anyone copy her Potions homework.",
-        exTrans: "妙麗個性極為獨立，拒絕讓任何人抄她的魔藥學作業。" },
-    { id: "h010", word: "significant", phonetic: "/sɪɡˈnɪfɪkənt/", pos: "adj.", meaning: "重要的；有意義的", tag: "高中",
-        example: "The lightning-bolt scar on Harry's forehead was significant — a mark of his unique connection to Voldemort.",
-        exTrans: "哈利額頭上的閃電疤痕意義重大，是他與佛地魔獨特連結的印記。" },
-    { id: "h011", word: "opportunity", phonetic: "/ˌɒpəˈtjuːnɪti/", pos: "n.", meaning: "機會；時機", tag: "高中",
-        example: "Dumbledore never missed an opportunity to remind Harry that love was the greatest of all magics.",
-        exTrans: "鄧不利多從不放過任何機會提醒哈利，愛是最偉大的魔法。" },
-    { id: "h012", word: "responsibility", phonetic: "/rɪˌspɒnsɪˈbɪlɪti/", pos: "n.", meaning: "責任；職責", tag: "高中",
-        example: "As the Chosen One, Harry felt the full weight of responsibility for every life threatened by Voldemort.",
-        exTrans: "身為被選中的人，哈利深切感受到對每一個被佛地魔威脅的生命所肩負的責任。" },
-    { id: "h013", word: "recognize", phonetic: "/ˈrekəɡnaɪz/", pos: "v.", meaning: "認出；承認", tag: "高中",
-        example: "Harry did not recognize the cloaked figure until it stepped into the torchlight.",
-        exTrans: "直到那披著斗篷的身影走進火把的光芒中，哈利才認出了那是誰。" },
-    { id: "h014", word: "communicate", phonetic: "/kəˈmjuːnɪkeɪt/", pos: "v.", meaning: "溝通；傳達", tag: "高中",
-        example: "The portraits at Hogwarts could communicate by slipping between frames across the castle.",
-        exTrans: "霍格華茲的肖像畫可以穿梭於城堡各處的畫框之間互相溝通。" },
-    { id: "h015", word: "benefit", phonetic: "/ˈbenɪfɪt/", pos: "n./v.", meaning: "利益；使受益", tag: "高中",
-        example: "Dumbledore believed that painful truths could benefit a young wizard far more than comforting lies.",
-        exTrans: "鄧不利多相信，痛苦的真相遠比安慰性的謊言更能讓年輕的巫師受益。" },
-    { id: "h016", word: "environment", phonetic: "/ɪnˈvaɪərənmənt/", pos: "n.", meaning: "環境；自然環境", tag: "高中",
-        example: "The Forbidden Forest was a dangerous environment that most students were forbidden from entering.",
-        exTrans: "禁忌森林是一個危險的環境，大多數學生都被嚴格禁止進入。" },
-    { id: "h017", word: "disaster", phonetic: "/dɪˈzɑːstə/", pos: "n.", meaning: "災難；禍患", tag: "高中",
-        example: "The return of Voldemort was a disaster the wizarding world had feared for over a decade.",
-        exTrans: "佛地魔的回歸是巫師界恐懼了十多年的災難。" },
-    { id: "h018", word: "solution", phonetic: "/səˈluːʃn/", pos: "n.", meaning: "解決方案；溶液", tag: "高中",
-        example: "Hermione spent the night searching for a solution to the riddle of the Chamber of Secrets.",
-        exTrans: "妙麗整晚都在尋找解決密室謎題的方法。" },
-    { id: "h019", word: "compete", phonetic: "/kəmˈpiːt/", pos: "v.", meaning: "競爭；比賽", tag: "高中",
-        example: "Champions from four schools came to Hogwarts to compete in the legendary Triwizard Tournament.",
-        exTrans: "來自四所學校的代表選手齊聚霍格華茲，參加傳奇的三巫鬥法賽。" },
-    { id: "h020", word: "justice", phonetic: "/ˈdʒʌstɪs/", pos: "n.", meaning: "正義；公平", tag: "高中",
-        example: "Dumbledore spent his life fighting for justice in a world where the powerful escaped punishment too easily.",
-        exTrans: "鄧不利多一生為正義而戰，在那個強者太容易逃脫懲罰的世界裡。" },
-    { id: "t001", word: "alleviate", phonetic: "/əˈliːvɪeɪt/", pos: "v.", meaning: "減輕；緩和", tag: "托福",
-        example: "Madam Pomfrey administered a potion to alleviate the pain shooting through Harry's broken arm.",
-        exTrans: "龐弗雷夫人給了一劑藥水，以減輕哈利斷臂傳來的劇痛。" },
-    { id: "t002", word: "ambiguous", phonetic: "/æmˈbɪɡjuəs/", pos: "adj.", meaning: "模糊的；有歧義的", tag: "托福",
-        example: "Trelawney's prophecy was deeply ambiguous, open to several interpretations.",
-        exTrans: "特里勞尼的預言深具歧義，可以有多種不同的解讀方式。" },
-    { id: "t003", word: "benevolent", phonetic: "/bɪˈnevələnt/", pos: "adj.", meaning: "仁慈的；善意的", tag: "托福",
-        example: "Dumbledore was a benevolent headmaster who gave even the most troubled students a chance.",
-        exTrans: "鄧不利多是一位仁慈的校長，即使是最麻煩的學生也給予機會。" },
-    { id: "t004", word: "coherent", phonetic: "/kəʊˈhɪərənt/", pos: "adj.", meaning: "連貫的；一致的", tag: "托福",
-        example: "Under Veritaserum, the prisoner's confession finally became coherent and utterly damning.",
-        exTrans: "在吐真劑的作用下，囚犯的供詞終於變得連貫，且極具定罪力。" },
-    { id: "t005", word: "compelling", phonetic: "/kəmˈpelɪŋ/", pos: "adj.", meaning: "引人注目的；有說服力的", tag: "托福",
-        example: "Dumbledore presented a compelling case that Harry must learn the full truth about the Horcruxes.",
-        exTrans: "鄧不利多提出了一個有說服力的論點，認為哈利必須了解魂器的全部真相。" },
-    { id: "t006", word: "contemplate", phonetic: "/ˈkɒntəmpleɪt/", pos: "v.", meaning: "沉思；考慮", tag: "托福",
-        example: "Harry sat by the Black Lake to contemplate the immense task ahead — destroying each Horcrux.",
-        exTrans: "哈利坐在黑湖畔沉思眼前的艱鉅任務——摧毀每一個魂器。" },
-    { id: "t007", word: "deliberate", phonetic: "/dɪˈlɪbərɪt/", pos: "adj./v.", meaning: "故意的；深思熟慮", tag: "托福",
-        example: "The attack on the Muggle family was clearly deliberate — a message from the Death Eaters.",
-        exTrans: "對那個麻瓜家庭的攻擊顯然是蓄意為之，是食死人傳遞的一則信息。" },
-    { id: "t008", word: "diminish", phonetic: "/dɪˈmɪnɪʃ/", pos: "v.", meaning: "減少；降低", tag: "托福",
-        example: "Voldemort's power began to diminish the moment the final Horcrux was destroyed.",
-        exTrans: "最後一個魂器被摧毀的那一刻，佛地魔的力量開始消退。" },
-    { id: "t009", word: "diverse", phonetic: "/daɪˈvɜːs/", pos: "adj.", meaning: "多樣的；多元的", tag: "托福",
-        example: "Hogwarts welcomed a diverse community, each student bringing unique backgrounds and talents.",
-        exTrans: "霍格華茲歡迎多元的社群，每位學生都帶來獨特的背景與才能。" },
-    { id: "t010", word: "elaborate", phonetic: "/ɪˈlæbərɪt/", pos: "adj./v.", meaning: "詳盡的；詳細說明", tag: "托福",
-        example: "Fred and George devised an elaborate escape from Hogwarts in the most spectacular fashion.",
-        exTrans: "弗雷德與喬治以最壯觀的方式策劃了一場精心設計的逃離霍格華茲行動。" },
-    { id: "t011", word: "cognitive", phonetic: "/ˈkɒɡnɪtɪv/", pos: "adj.", meaning: "認知的；認識的", tag: "托福",
-        example: "The Memory Charm erased every cognitive trace, leaving Lockhart completely blank.",
-        exTrans: "失憶咒抹去了每一道認知痕跡，讓洛哈特的腦中完全一片空白。" },
-    { id: "t012", word: "candid", phonetic: "/ˈkændɪd/", pos: "adj.", meaning: "坦率的；直言不諱的", tag: "托福",
-        example: "For the first time, Dumbledore was entirely candid with Harry about the danger they faced.",
-        exTrans: "鄧不利多第一次對哈利完全坦誠，告訴他他們所面臨的危險。" },
-    { id: "t013", word: "culminate", phonetic: "/ˈkʌlmɪneɪt/", pos: "v.", meaning: "達到頂點；告終", tag: "托福",
-        example: "Years of struggle culminated in the final battle at Hogwarts, where all fates were decided.",
-        exTrans: "多年的抗爭在霍格華茲的最終決戰中達到頂點，所有命運在此決定。" },
-    { id: "t014", word: "brevity", phonetic: "/ˈbrevɪti/", pos: "n.", meaning: "簡潔；簡短", tag: "托福",
-        example: "Snape was known for his brevity — each sentence in his class was cold, precise, and final.",
-        exTrans: "石內卜以簡潔著稱——他課堂上的每一句話都冷峻、精確而不容置疑。" },
-    { id: "t015", word: "deduce", phonetic: "/dɪˈdjuːs/", pos: "v.", meaning: "推論；演繹", tag: "托福",
-        example: "From a single memory, Dumbledore was able to deduce that Voldemort had created a Horcrux.",
-        exTrans: "僅憑一段記憶，鄧不利多便能推論出佛地魔已創造了一個魂器。" },
-    { id: "t016", word: "controversial", phonetic: "/ˌkɒntrəˈvɜːʃl/", pos: "adj.", meaning: "有爭議的；引起爭論的", tag: "托福",
-        example: "Rita Skeeter's controversial articles turned public opinion sharply against Harry.",
-        exTrans: "麗塔·西奇的爭議性文章使輿論急遽轉向，對哈利十分不利。" },
-    { id: "t017", word: "ameliorate", phonetic: "/əˈmiːlɪəreɪt/", pos: "v.", meaning: "改善；改良", tag: "托福",
-        example: "Dumbledore worked to ameliorate the suffering of those persecuted by dark magic.",
-        exTrans: "鄧不利多致力於改善那些遭受黑魔法迫害者的處境。" },
-    { id: "t018", word: "aberrant", phonetic: "/ˈæbərənt/", pos: "adj.", meaning: "異常的；偏離常規的", tag: "托福",
-        example: "The dementor's aberrant presence in Little Whinging proved the Ministry had gone wrong.",
-        exTrans: "催狂魔的異常現身於小惠金寧，證明魔法部已出了嚴重問題。" },
-    { id: "t019", word: "abscond", phonetic: "/əbˈskɒnd/", pos: "v.", meaning: "潛逃；逃跑", tag: "托福",
-        example: "Sirius Black was said to have absconded from Azkaban — the only prisoner to escape alive.",
-        exTrans: "據說天狼星·布萊克已從阿茲卡班潛逃，是史上唯一活著逃出的囚犯。" },
-    { id: "t020", word: "concise", phonetic: "/kənˈsaɪs/", pos: "adj.", meaning: "簡明的；扼要的", tag: "托福",
-        example: "Mad-Eye Moody's instruction was always concise: constant vigilance.",
-        exTrans: "瘋眼穆敵的指示永遠簡明扼要：時刻保持警覺。" },
-    // ── 新增高中單字 h021–h160 ──
-    { id: "h021", word: "achieve", phonetic: "/əˈtʃiːv/", pos: "v.", meaning: "達成；完成", tag: "高中",
-        example: "Harry achieved what no other wizard had managed — he survived the Killing Curse as an infant.",
-        exTrans: "哈利做到了沒有任何巫師辦到的事——他在嬰兒時期存活了死亡魔咒。" },
-    { id: "h022", word: "admire", phonetic: "/ədˈmaɪər/", pos: "v.", meaning: "欽佩；讚美", tag: "高中",
-        example: "Many students admired Dumbledore not only for his power but for his great kindness.",
-        exTrans: "許多學生欽佩鄧不利多，不僅因為他的能力，更因為他的仁慈。" },
-    { id: "h023", word: "affect", phonetic: "/əˈfekt/", pos: "v.", meaning: "影響；感動", tag: "高中",
-        example: "The dementors affected everyone differently, but for Harry their effect was especially devastating.",
-        exTrans: "催狂魔對每個人的影響不同，但對哈利來說，牠們的影響格外具有毀滅性。" },
-    { id: "h024", word: "ancient", phonetic: "/ˈeɪnʃənt/", pos: "adj.", meaning: "古老的；古代的", tag: "高中",
-        example: "Hogwarts was built on ancient magic, its stones soaked in centuries of spells and secrets.",
-        exTrans: "霍格華茲建立在古老的魔法之上，它的石頭浸透了幾個世紀的咒語與秘密。" },
-    { id: "h025", word: "anxiety", phonetic: "/æŋˈzaɪəti/", pos: "n.", meaning: "焦慮；擔心", tag: "高中",
-        example: "Harry felt a wave of anxiety as he waited to hear whether Sirius had escaped safely.",
-        exTrans: "哈利在等待天狼星是否安全逃脫的消息時，感到一陣焦慮湧上心頭。" },
-    { id: "h026", word: "apparent", phonetic: "/əˈpærənt/", pos: "adj.", meaning: "明顯的；表面上的", tag: "高中",
-        example: "It was apparent to everyone in the Great Hall that something had gone terribly wrong.",
-        exTrans: "大禮堂裡的每個人都清楚地看出，有什麼事情嚴重出錯了。" },
-    { id: "h027", word: "appreciate", phonetic: "/əˈpriːʃieɪt/", pos: "v.", meaning: "欣賞；感激", tag: "高中",
-        example: "Harry came to appreciate the quiet comfort of the Gryffindor common room after long days of danger.",
-        exTrans: "在漫長危險的日子之後，哈利開始珍惜葛來分多公共休息室那份安靜的舒適。" },
-    { id: "h028", word: "argument", phonetic: "/ˈɑːɡjumənt/", pos: "n.", meaning: "爭論；論點", tag: "高中",
-        example: "Ron and Hermione's argument over the broomstick lasted all the way to Hogsmeade.",
-        exTrans: "榮恩和妙麗關於掃帚的爭論一路持續到活米村。" },
-    { id: "h029", word: "assist", phonetic: "/əˈsɪst/", pos: "v.", meaning: "協助；幫助", tag: "高中",
-        example: "Dumbledore asked several portraits to assist in guiding Harry through the castle in secret.",
-        exTrans: "鄧不利多要求幾幅肖像畫協助引導哈利秘密穿越城堡。" },
-    { id: "h030", word: "assume", phonetic: "/əˈsjuːm/", pos: "v.", meaning: "假設；承擔", tag: "高中",
-        example: "Everyone assumed Snape was the villain, but the truth was far more complicated than it appeared.",
-        exTrans: "所有人都以為石內卜是反派，但真相遠比表面上複雜得多。" },
-    { id: "h031", word: "attempt", phonetic: "/əˈtempt/", pos: "v./n.", meaning: "嘗試；企圖", tag: "高中",
-        example: "Each attempt to destroy a Horcrux brought Harry and his friends closer to the final confrontation.",
-        exTrans: "每一次摧毀魂器的嘗試，都讓哈利和他的朋友們更接近最終的對決。" },
-    { id: "h032", word: "attitude", phonetic: "/ˈætɪtjuːd/", pos: "n.", meaning: "態度；看法", tag: "高中",
-        example: "Harry's attitude toward authority was shaped by years of unfair treatment from the Dursleys.",
-        exTrans: "哈利對權威的態度，是被多年來德思禮一家不公平對待所形塑的。" },
-    { id: "h033", word: "authority", phonetic: "/ɔːˈθɒrɪti/", pos: "n.", meaning: "權威；當局", tag: "高中",
-        example: "The Ministry of Magic was the highest authority in the wizarding world, though often a corrupt one.",
-        exTrans: "魔法部是巫師界最高的權威機構，儘管它時常腐敗不堪。" },
-    { id: "h034", word: "brilliant", phonetic: "/ˈbrɪliənt/", pos: "adj.", meaning: "聰明的；燦爛的", tag: "高中",
-        example: "Hermione was widely considered the most brilliant student Hogwarts had seen in many years.",
-        exTrans: "妙麗被普遍認為是霍格華茲多年來最聰明的學生。" },
-    { id: "h035", word: "capable", phonetic: "/ˈkeɪpəbl/", pos: "adj.", meaning: "有能力的；能幹的", tag: "高中",
-        example: "Dumbledore believed Harry was capable of facing Voldemort, even when Harry doubted himself.",
-        exTrans: "鄧不利多相信哈利有能力面對佛地魔，即使哈利自己都感到懷疑。" },
-    { id: "h036", word: "challenge", phonetic: "/ˈtʃælɪndʒ/", pos: "n./v.", meaning: "挑戰；質疑", tag: "高中",
-        example: "The Triwizard Tournament presented challenges that tested not just magic but also character.",
-        exTrans: "三巫鬥法賽帶來了考驗，不僅測試魔法能力，更測試一個人的品格。" },
-    { id: "h037", word: "character", phonetic: "/ˈkærəktər/", pos: "n.", meaning: "性格；角色；品格", tag: "高中",
-        example: "It is our choices that reveal our true character, as Dumbledore wisely reminded Harry.",
-        exTrans: "正如鄧不利多睿智地提醒哈利：是我們的選擇揭示了我們真正的性格。" },
-    { id: "h038", word: "circumstance", phonetic: "/ˈsɜːkəmstəns/", pos: "n.", meaning: "情況；環境", tag: "高中",
-        example: "Under no circumstance should students enter the Forbidden Forest alone, Dumbledore warned.",
-        exTrans: "鄧不利多警告，在任何情況下，學生都不應獨自進入禁忌森林。" },
-    { id: "h039", word: "clue", phonetic: "/kluː/", pos: "n.", meaning: "線索；提示", tag: "高中",
-        example: "Hermione found the crucial clue about the Basilisk hidden in a library book.",
-        exTrans: "妙麗在一本圖書館的書中找到了關於蛇怪的關鍵線索。" },
-    { id: "h040", word: "concentrate", phonetic: "/ˈkɒnsntreɪt/", pos: "v.", meaning: "集中；專注", tag: "高中",
-        example: "Harry struggled to concentrate during Occlumency lessons with Snape's cold eyes watching him.",
-        exTrans: "哈利在石內卜冷眼注視下，努力在鎖心術課堂上集中精神。" },
-    { id: "h041", word: "concern", phonetic: "/kənˈsɜːn/", pos: "n./v.", meaning: "關心；擔憂", tag: "高中",
-        example: "Dumbledore's greatest concern was not power, but the safety of those who could not protect themselves.",
-        exTrans: "鄧不利多最大的關切不是權力，而是那些無法保護自己的人的安全。" },
-    { id: "h042", word: "conclude", phonetic: "/kənˈkluːd/", pos: "v.", meaning: "結論；結束", tag: "高中",
-        example: "After months of searching, Harry concluded that the final Horcrux was hidden at Hogwarts itself.",
-        exTrans: "經過幾個月的搜尋，哈利得出結論，最後一個魂器就藏在霍格華茲。" },
-    { id: "h043", word: "confidence", phonetic: "/ˈkɒnfɪdəns/", pos: "n.", meaning: "信心；自信", tag: "高中",
-        example: "Quidditch gave Harry a confidence on his broomstick that he rarely felt elsewhere.",
-        exTrans: "魁地奇給了哈利一種在掃帚上的自信，這是他在其他地方很少感受到的。" },
-    { id: "h044", word: "conquer", phonetic: "/ˈkɒŋkər/", pos: "v.", meaning: "征服；克服", tag: "高中",
-        example: "To conquer fear, Harry had to face it directly, just as he did in the graveyard.",
-        exTrans: "要征服恐懼，哈利必須直面它，就像他在墓地所做的那樣。" },
-    { id: "h045", word: "consequence", phonetic: "/ˈkɒnsɪkwəns/", pos: "n.", meaning: "後果；結果", tag: "高中",
-        example: "Every spell cast during the battle had consequences that rippled through the wizarding world.",
-        exTrans: "戰鬥中施放的每一個咒語都帶來了影響整個巫師界的後果。" },
-    { id: "h046", word: "consider", phonetic: "/kənˈsɪdər/", pos: "v.", meaning: "考慮；認為", tag: "高中",
-        example: "Harry considered all his options before deciding to walk into the forest and face Voldemort alone.",
-        exTrans: "哈利在決定獨自走進森林面對佛地魔之前，考慮了所有的選擇。" },
-    { id: "h047", word: "contribute", phonetic: "/kənˈtrɪbjuːt/", pos: "v.", meaning: "貢獻；促成", tag: "高中",
-        example: "Each member of Dumbledore's Army contributed their unique skills to the battle at Hogwarts.",
-        exTrans: "鄧不利多的軍隊每一位成員都在霍格華茲之戰中貢獻了各自獨特的技能。" },
-    { id: "h048", word: "convenient", phonetic: "/kənˈviːniənt/", pos: "adj.", meaning: "方便的；便利的", tag: "高中",
-        example: "The Room of Requirement appeared whenever it was convenient and most needed by its seeker.",
-        exTrans: "有求必應屋在最需要、最方便的時候出現在尋求者面前。" },
-    { id: "h049", word: "convince", phonetic: "/kənˈvɪns/", pos: "v.", meaning: "說服；使確信", tag: "高中",
-        example: "It took all of Hermione's logic to convince the boys that rushing in without a plan was foolish.",
-        exTrans: "妙麗用盡了所有的邏輯，才說服那兩個男生，不經計劃就衝進去是愚蠢的。" },
-    { id: "h050", word: "cooperate", phonetic: "/kəʊˈɒpəreɪt/", pos: "v.", meaning: "合作；協力", tag: "高中",
-        example: "Harry, Ron, and Hermione had to cooperate perfectly to survive each dangerous challenge they faced.",
-        exTrans: "哈利、榮恩和妙麗必須完美合作，才能在面臨的每一個危險挑戰中存活。" },
-    { id: "h051", word: "creative", phonetic: "/kriˈeɪtɪv/", pos: "adj.", meaning: "有創意的；創造性的", tag: "高中",
-        example: "Fred and George were the most creative students at Hogwarts, turning magic into mischief and delight.",
-        exTrans: "弗雷德和喬治是霍格華茲最有創意的學生，將魔法變成惡作劇與歡樂。" },
-    { id: "h052", word: "crucial", phonetic: "/ˈkruːʃl/", pos: "adj.", meaning: "關鍵的；決定性的", tag: "高中",
-        example: "Neville's destruction of the last Horcrux was crucial to Voldemort's final defeat.",
-        exTrans: "奈威摧毀最後一個魂器是佛地魔最終被擊敗的關鍵。" },
-    { id: "h053", word: "curious", phonetic: "/ˈkjʊəriəs/", pos: "adj.", meaning: "好奇的；奇特的", tag: "高中",
-        example: "Harry was curious about his past and spent years uncovering the truth about his parents.",
-        exTrans: "哈利對自己的過去充滿好奇，花了多年時間揭開關於父母的真相。" },
-    { id: "h054", word: "damage", phonetic: "/ˈdæmɪdʒ/", pos: "n./v.", meaning: "損害；傷害", tag: "高中",
-        example: "The battle caused enormous damage to Hogwarts, but the school was rebuilt by the wizarding community.",
-        exTrans: "這場戰鬥對霍格華茲造成了巨大的破壞，但學校最終由巫師社群重建。" },
-    { id: "h055", word: "dangerous", phonetic: "/ˈdeɪndʒərəs/", pos: "adj.", meaning: "危險的", tag: "高中",
-        example: "The path ahead was dangerous, but Harry chose to walk it rather than live in ignorance and fear.",
-        exTrans: "前方的道路危機四伏，但哈利選擇繼續前行，而非活在無知與恐懼之中。" },
-    { id: "h056", word: "debate", phonetic: "/dɪˈbeɪt/", pos: "n./v.", meaning: "辯論；討論", tag: "高中",
-        example: "There was much debate among wizards about whether it was right to use dark magic even against dark wizards.",
-        exTrans: "巫師們對於是否可以對黑魔法師使用黑魔法展開了激烈的辯論。" },
-    { id: "h057", word: "deceive", phonetic: "/dɪˈsiːv/", pos: "v.", meaning: "欺騙；蒙騙", tag: "高中",
-        example: "Voldemort had deceived many followers into believing he alone could grant them immortality.",
-        exTrans: "佛地魔欺騙了許多追隨者，讓他們相信只有他能賜予不死之身。" },
-    { id: "h058", word: "decision", phonetic: "/dɪˈsɪʒn/", pos: "n.", meaning: "決定；決策", tag: "高中",
-        example: "The decision to trust Snape was one of the hardest Dumbledore ever had to make.",
-        exTrans: "信任石內卜的決定，是鄧不利多有生以來做過最艱難的決定之一。" },
-    { id: "h059", word: "defend", phonetic: "/dɪˈfend/", pos: "v.", meaning: "防禦；捍衛", tag: "高中",
-        example: "The members of the Order of the Phoenix risked their lives to defend the wizarding world.",
-        exTrans: "鳳凰社的成員們冒著生命危險捍衛整個巫師界。" },
-    { id: "h060", word: "delay", phonetic: "/dɪˈleɪ/", pos: "v./n.", meaning: "延誤；推遲", tag: "高中",
-        example: "Any delay in finding the remaining Horcruxes could cost innocent lives, Harry knew.",
-        exTrans: "哈利知道，尋找剩餘魂器的任何延誤都可能讓無辜的生命付出代價。" },
-    { id: "h061", word: "demand", phonetic: "/dɪˈmɑːnd/", pos: "v./n.", meaning: "要求；需求", tag: "高中",
-        example: "Voldemort demanded complete loyalty from his followers, punishing any sign of weakness.",
-        exTrans: "佛地魔要求追隨者絕對效忠，懲罰任何軟弱的跡象。" },
-    { id: "h062", word: "describe", phonetic: "/dɪˈskraɪb/", pos: "v.", meaning: "描述；形容", tag: "高中",
-        example: "Words could scarcely describe the terror Harry felt standing before Voldemort in the graveyard.",
-        exTrans: "言語幾乎無法形容哈利站在墓地佛地魔面前時所感受到的恐懼。" },
-    { id: "h063", word: "deserve", phonetic: "/dɪˈzɜːv/", pos: "v.", meaning: "值得；應得", tag: "高中",
-        example: "Dobby deserved his freedom more than any creature Harry had ever known.",
-        exTrans: "多比比哈利所認識的任何生物都更值得獲得自由。" },
-    { id: "h064", word: "desire", phonetic: "/dɪˈzaɪər/", pos: "n./v.", meaning: "渴望；欲望", tag: "高中",
-        example: "The Mirror of Erised reflected the deepest desire of whoever gazed into it.",
-        exTrans: "厄里斯魔鏡映照出每一個凝視它之人內心最深切的渴望。" },
-    { id: "h065", word: "destroy", phonetic: "/dɪˈstrɔɪ/", pos: "v.", meaning: "摧毀；破壞", tag: "高中",
-        example: "Harry dedicated two years to finding and destroying every last one of Voldemort's Horcruxes.",
-        exTrans: "哈利花了兩年時間尋找並摧毀佛地魔每一個魂器。" },
-    { id: "h066", word: "develop", phonetic: "/dɪˈveləp/", pos: "v.", meaning: "發展；培養", tag: "高中",
-        example: "Harry developed his magical abilities rapidly once he had proper instruction and belief in himself.",
-        exTrans: "一旦有了適當的指導和對自己的信心，哈利的魔法能力便迅速發展。" },
-    { id: "h067", word: "difficult", phonetic: "/ˈdɪfɪkəlt/", pos: "adj.", meaning: "困難的；棘手的", tag: "高中",
-        example: "The most difficult lesson Harry ever learned was that some people die no matter how hard you try to save them.",
-        exTrans: "哈利學過最艱難的一課是：有些人，無論你多麼努力，都救不了。" },
-    { id: "h068", word: "diligent", phonetic: "/ˈdɪlɪdʒənt/", pos: "adj.", meaning: "勤奮的；努力的", tag: "高中",
-        example: "Hermione was the most diligent student at Hogwarts, often studying long after others had gone to bed.",
-        exTrans: "妙麗是霍格華茲最勤奮的學生，常常在其他人入睡後仍在用功讀書。" },
-    { id: "h069", word: "disappear", phonetic: "/ˌdɪsəˈpɪər/", pos: "v.", meaning: "消失；失蹤", tag: "高中",
-        example: "The golden snitch disappeared into Harry's closed fist, ending the match in Gryffindor's favour.",
-        exTrans: "金色飛賊消失在哈利緊握的拳頭裡，比賽就此以葛來分多的勝利告終。" },
-    { id: "h070", word: "discover", phonetic: "/dɪˈskʌvər/", pos: "v.", meaning: "發現；找到", tag: "高中",
-        example: "Harry discovered a hidden room beneath the school that held secrets dating back to Salazar Slytherin himself.",
-        exTrans: "哈利發現了學校地底下的一個隱密房間，藏著可以追溯至薩拉查·史萊哲林本人的秘密。" },
-    { id: "h071", word: "display", phonetic: "/dɪˈspleɪ/", pos: "v./n.", meaning: "展示；表現", tag: "高中",
-        example: "Harry rarely displayed his emotions openly, having learned to keep them hidden from the Dursleys.",
-        exTrans: "哈利很少公開表露情緒，因為他從小就學會了對德思禮一家隱藏感受。" },
-    { id: "h072", word: "distinguish", phonetic: "/dɪˈstɪŋɡwɪʃ/", pos: "v.", meaning: "區分；辨別", tag: "高中",
-        example: "It was hard to distinguish between friend and foe during the chaos of the final battle.",
-        exTrans: "在最終決戰的混亂中，很難分辨敵友。" },
-    { id: "h073", word: "doubt", phonetic: "/daʊt/", pos: "n./v.", meaning: "懷疑；不確定", tag: "高中",
-        example: "Even in his darkest moments, Harry never entirely let doubt extinguish the flame of hope inside him.",
-        exTrans: "即使在最黑暗的時刻，哈利也從未完全讓懷疑熄滅他內心的希望之火。" },
-    { id: "h074", word: "dread", phonetic: "/dred/", pos: "n./v.", meaning: "恐懼；害怕", tag: "高中",
-        example: "Harry felt a cold dread spread through him as he approached the edge of the forest.",
-        exTrans: "哈利走近森林邊緣時，感到一股寒意恐懼蔓延全身。" },
-    { id: "h075", word: "eager", phonetic: "/ˈiːɡər/", pos: "adj.", meaning: "渴望的；熱切的", tag: "高中",
-        example: "Neville was eager to prove himself and finally did so in the most heroic way imaginable.",
-        exTrans: "奈威渴望證明自己，最終以最英勇的方式做到了。" },
-    { id: "h076", word: "effective", phonetic: "/ɪˈfektɪv/", pos: "adj.", meaning: "有效的；有用的", tag: "高中",
-        example: "The Patronus Charm was the only effective defence against dementors, and Harry mastered it young.",
-        exTrans: "守護神咒是對抗催狂魔的唯一有效防禦，而哈利在年幼時就掌握了它。" },
-    { id: "h077", word: "effort", phonetic: "/ˈefət/", pos: "n.", meaning: "努力；嘗試", tag: "高中",
-        example: "Despite every effort, Voldemort could not understand the magic of love that ultimately destroyed him.",
-        exTrans: "儘管竭盡全力，佛地魔始終無法理解最終摧毀他的愛的魔力。" },
-    { id: "h078", word: "embarrass", phonetic: "/ɪmˈbærəs/", pos: "v.", meaning: "使尷尬；使困窘", tag: "高中",
-        example: "Ron was often embarrassed by his family's lack of wealth, though Harry never once judged him for it.",
-        exTrans: "榮恩常因家境貧窮而感到尷尬，但哈利從未因此評判過他。" },
-    { id: "h079", word: "encounter", phonetic: "/ɪnˈkaʊntər/", pos: "v./n.", meaning: "遭遇；碰見", tag: "高中",
-        example: "Every time Harry encountered Voldemort, he emerged changed — wiser, sadder, and more determined.",
-        exTrans: "每一次與佛地魔相遇，哈利都變得不同——更睿智、更悲傷，也更堅定。" },
-    { id: "h080", word: "endure", phonetic: "/ɪnˈdjʊər/", pos: "v.", meaning: "忍受；持久", tag: "高中",
-        example: "Harry endured years of neglect at the Dursleys' before discovering his true place in the wizarding world.",
-        exTrans: "在發現自己在巫師界的真正歸屬之前，哈利在德思禮家忍受了多年的忽視。" },
-    { id: "h081", word: "enemy", phonetic: "/ˈenəmi/", pos: "n.", meaning: "敵人；仇敵", tag: "高中",
-        example: "Voldemort was Harry's greatest enemy, yet also, in a strange way, his closest connection.",
-        exTrans: "佛地魔是哈利最大的敵人，然而以一種奇特的方式，也是與他聯繫最緊密的存在。" },
-    { id: "h082", word: "enormous", phonetic: "/ɪˈnɔːməs/", pos: "adj.", meaning: "巨大的；龐大的", tag: "高中",
-        example: "Hagrid's enormous hands were gentle when he handed Harry the little bundle that held his future.",
-        exTrans: "海格龐大的雙手卻輕柔地將那個裝著哈利未來的小包裹遞給他。" },
-    { id: "h083", word: "escape", phonetic: "/ɪˈskeɪp/", pos: "v./n.", meaning: "逃脫；逃離", tag: "高中",
-        example: "Every escape from Voldemort left Harry shaken but more certain of what he had to do.",
-        exTrans: "每一次從佛地魔手中逃脫，都讓哈利心神不寧，卻更加確定自己必須做什麼。" },
-    { id: "h084", word: "essential", phonetic: "/ɪˈsenʃl/", pos: "adj.", meaning: "必要的；本質的", tag: "高中",
-        example: "Trust was essential in the fight against Voldemort — without it, the Order could not function.",
-        exTrans: "信任在對抗佛地魔的戰鬥中至關重要——沒有信任，鳳凰社就無法運作。" },
-    { id: "h085", word: "eventually", phonetic: "/ɪˈventʃuəli/", pos: "adv.", meaning: "最終；終究", tag: "高中",
-        example: "Harry eventually understood that he had to die in order for Voldemort to be truly defeated.",
-        exTrans: "哈利最終明白，他必須死去，佛地魔才能被真正擊敗。" },
-    { id: "h086", word: "evidence", phonetic: "/ˈevɪdəns/", pos: "n.", meaning: "證據；跡象", tag: "高中",
-        example: "Hermione gathered evidence to prove that Sirius Black was innocent and had been wrongly imprisoned.",
-        exTrans: "妙麗收集證據，試圖證明天狼星·布萊克是清白的，被冤枉入獄的。" },
-    { id: "h087", word: "examine", phonetic: "/ɪɡˈzæmɪn/", pos: "v.", meaning: "檢查；審視", tag: "高中",
-        example: "Dumbledore carefully examined the cave for hidden enchantments before they entered it.",
-        exTrans: "鄧不利多在進入山洞之前，仔細檢查了是否有隱藏的魔法結界。" },
-    { id: "h088", word: "exhaust", phonetic: "/ɪɡˈzɔːst/", pos: "v.", meaning: "使精疲力竭；耗盡", tag: "高中",
-        example: "The long march through the Scottish countryside had exhausted Harry beyond what he thought possible.",
-        exTrans: "穿越蘇格蘭鄉間的長途跋涉把哈利累得遠超他所以為的極限。" },
-    { id: "h089", word: "expect", phonetic: "/ɪkˈspekt/", pos: "v.", meaning: "期待；預期", tag: "高中",
-        example: "No one expected the quiet boy from Privet Drive to become the saviour of the wizarding world.",
-        exTrans: "沒有人預料到來自私立路的那個安靜男孩，會成為巫師界的救世主。" },
-    { id: "h090", word: "experience", phonetic: "/ɪkˈspɪəriəns/", pos: "n./v.", meaning: "經驗；體驗", tag: "高中",
-        example: "Harry's experience of loss made him more compassionate toward others who suffered.",
-        exTrans: "哈利失去親人的經歷使他對其他受苦的人更加充滿同情。" },
-    { id: "h091", word: "explain", phonetic: "/ɪkˈspleɪn/", pos: "v.", meaning: "解釋；說明", tag: "高中",
-        example: "It was nearly impossible to explain the magic of a Patronus to someone who had never felt true joy.",
-        exTrans: "向一個從未感受過真正喜悅的人解釋守護神咒的魔力，幾乎是不可能的事。" },
-    { id: "h092", word: "explore", phonetic: "/ɪkˈsplɔːr/", pos: "v.", meaning: "探索；探究", tag: "高中",
-        example: "Harry used the Marauder's Map to explore every hidden passage and secret corner of Hogwarts.",
-        exTrans: "哈利用劫盜地圖探索霍格華茲每一條隱密通道和每一個秘密角落。" },
-    { id: "h093", word: "failure", phonetic: "/ˈfeɪljər/", pos: "n.", meaning: "失敗；失誤", tag: "高中",
-        example: "Each failure in his training was a lesson Harry took seriously, knowing lives depended on his success.",
-        exTrans: "訓練中的每一次失敗都是哈利認真吸取的教訓，因為他知道有人命繫於他的成功。" },
-    { id: "h094", word: "faithful", phonetic: "/ˈfeɪθfl/", pos: "adj.", meaning: "忠實的；可靠的", tag: "高中",
-        example: "Dumbledore remained faithful to his belief in Harry even when others had given up hope.",
-        exTrans: "即使在其他人放棄希望時，鄧不利多仍對哈利保持忠誠的信念。" },
-    { id: "h095", word: "familiar", phonetic: "/fəˈmɪliər/", pos: "adj.", meaning: "熟悉的；常見的", tag: "高中",
-        example: "The smell of the Great Hall was familiar and comforting after a summer away from Hogwarts.",
-        exTrans: "在離開霍格華茲度過一個夏天後，大禮堂的氣味熟悉而令人安心。" },
-    { id: "h096", word: "fierce", phonetic: "/fɪəs/", pos: "adj.", meaning: "兇猛的；激烈的", tag: "高中",
-        example: "The battle was fierce, but the defenders of Hogwarts refused to surrender to Voldemort's forces.",
-        exTrans: "戰鬥激烈無比，但霍格華茲的守衛者們拒絕向佛地魔的軍隊投降。" },
-    { id: "h097", word: "flexible", phonetic: "/ˈfleksɪbl/", pos: "adj.", meaning: "靈活的；有彈性的", tag: "高中",
-        example: "A good wizard must be flexible in their thinking, adapting spells to suit new and unexpected situations.",
-        exTrans: "一個好的巫師必須思維靈活，能夠調整咒語以應對新的、出乎意料的情況。" },
-    { id: "h098", word: "forbid", phonetic: "/fəˈbɪd/", pos: "v.", meaning: "禁止；不准", tag: "高中",
-        example: "Students were strictly forbidden from entering the third-floor corridor during Harry's first year.",
-        exTrans: "哈利入學第一年，學生被嚴格禁止進入三樓走廊。" },
-    { id: "h099", word: "forgive", phonetic: "/fəˈɡɪv/", pos: "v.", meaning: "原諒；寬恕", tag: "高中",
-        example: "In his final moments, Harry encouraged Voldemort to feel remorse and to try to forgive himself.",
-        exTrans: "在最後的時刻，哈利鼓勵佛地魔感受悔恨，嘗試原諒自己。" },
-    { id: "h100", word: "fortune", phonetic: "/ˈfɔːtʃuːn/", pos: "n.", meaning: "命運；財富", tag: "高中",
-        example: "Professor Trelawney claimed she could read fortune in the tea leaves, though few believed her.",
-        exTrans: "特里勞尼教授聲稱她能從茶葉中讀出命運，儘管很少人相信她。" },
-    { id: "h101", word: "fragile", phonetic: "/ˈfrædʒaɪl/", pos: "adj.", meaning: "脆弱的；易碎的", tag: "高中",
-        example: "The fragile peace between wizards and muggles had been built over centuries and could not be broken lightly.",
-        exTrans: "巫師與麻瓜之間脆弱的和平歷經幾個世紀才建立，不能輕易打破。" },
-    { id: "h102", word: "freedom", phonetic: "/ˈfriːdəm/", pos: "n.", meaning: "自由；自由權", tag: "高中",
-        example: "Dobby lived for the day he would earn his freedom and serve his beloved Harry Potter no longer as a slave.",
-        exTrans: "多比活著就是為了有一天能獲得自由，不再作為奴隸服侍他深愛的哈利·波特。" },
-    { id: "h103", word: "frighten", phonetic: "/ˈfraɪtn/", pos: "v.", meaning: "使恐懼；嚇唬", tag: "高中",
-        example: "Even the bravest Aurors were frightened of speaking Voldemort's name aloud.",
-        exTrans: "即使是最勇敢的黑魔法捕手，也會因為大聲說出佛地魔的名字而感到恐懼。" },
-    { id: "h104", word: "frustrate", phonetic: "/frʌˈstreɪt/", pos: "v.", meaning: "使沮喪；阻礙", tag: "高中",
-        example: "It frustrated Harry enormously that adults kept secrets from him, believing they were protecting him.",
-        exTrans: "大人們以為在保護他而對他隱瞞秘密，這讓哈利感到極度沮喪。" },
-    { id: "h105", word: "fundamental", phonetic: "/ˌfʌndəˈmentl/", pos: "adj.", meaning: "基本的；根本的", tag: "高中",
-        example: "Dumbledore taught that love was the most fundamental magic of all — and the hardest to destroy.",
-        exTrans: "鄧不利多教導說，愛是所有魔法中最根本的——也是最難摧毀的。" },
-    { id: "h106", word: "generous", phonetic: "/ˈdʒenərəs/", pos: "adj.", meaning: "慷慨的；大方的", tag: "高中",
-        example: "Harry was generous with his Triwizard prize money, giving it all to Fred and George for their joke shop.",
-        exTrans: "哈利把三巫鬥法賽的全部獎金都給了弗雷德和喬治開笑話商店，大方至極。" },
-    { id: "h107", word: "genuine", phonetic: "/ˈdʒenjuɪn/", pos: "adj.", meaning: "真實的；真誠的", tag: "高中",
-        example: "Dumbledore's affection for Harry was genuine — not a strategy, but a true and abiding love.",
-        exTrans: "鄧不利多對哈利的情感是真摯的——不是策略，而是真正而持久的愛。" },
-    { id: "h108", word: "grateful", phonetic: "/ˈɡreɪtfl/", pos: "adj.", meaning: "感激的；感謝的", tag: "高中",
-        example: "Harry was grateful for every small kindness shown to him, having grown up without much of it.",
-        exTrans: "哈利對每一份微小的善意都充滿感激，因為他從小就缺少這樣的對待。" },
-    { id: "h109", word: "grief", phonetic: "/ɡriːf/", pos: "n.", meaning: "悲痛；悲傷", tag: "高中",
-        example: "The grief of losing Sirius was a wound that never fully healed in Harry's heart.",
-        exTrans: "失去天狼星的悲痛是哈利心中一道從未完全癒合的傷。" },
-    { id: "h110", word: "guarantee", phonetic: "/ˌɡærənˈtiː/", pos: "v./n.", meaning: "保證；擔保", tag: "高中",
-        example: "No one could guarantee survival in the war against Voldemort — only the choice to keep fighting.",
-        exTrans: "沒有人能在對抗佛地魔的戰爭中保證存活——只有繼續戰鬥的選擇。" },
-    { id: "h111", word: "habit", phonetic: "/ˈhæbɪt/", pos: "n.", meaning: "習慣；習性", tag: "高中",
-        example: "It was Harry's habit to check his wand every morning, a reflex born from years of danger.",
-        exTrans: "每天早上檢查魔杖是哈利的習慣，這是多年危險生活養成的反射動作。" },
-    { id: "h112", word: "hesitate", phonetic: "/ˈhezɪteɪt/", pos: "v.", meaning: "猶豫；躊躇", tag: "高中",
-        example: "Harry hesitated at the edge of the forest, knowing what waited inside would change everything.",
-        exTrans: "哈利在森林邊緣猶豫了一下，知道裡面等待著的將會改變一切。" },
-    { id: "h113", word: "honest", phonetic: "/ˈɒnɪst/", pos: "adj.", meaning: "誠實的；坦白的", tag: "高中",
-        example: "Dumbledore was not always honest with Harry, and later admitted this was his greatest failing.",
-        exTrans: "鄧不利多並非總是對哈利誠實，後來他承認這是他最大的過失。" },
-    { id: "h114", word: "humble", phonetic: "/ˈhʌmbl/", pos: "adj.", meaning: "謙遜的；謙虛的", tag: "高中",
-        example: "Despite his fame, Harry remained humble and was uncomfortable with the attention fame brought him.",
-        exTrans: "儘管聲名大噪，哈利仍保持謙遜，對名氣帶來的關注感到不自在。" },
-    { id: "h115", word: "identify", phonetic: "/aɪˈdentɪfaɪ/", pos: "v.", meaning: "辨認；確認；認同", tag: "高中",
-        example: "Harry could identify Voldemort's Horcruxes because of the unique dark energy they radiated.",
-        exTrans: "哈利能夠辨認出佛地魔的魂器，因為它們散發出獨特的黑暗能量。" },
-    { id: "h116", word: "ignore", phonetic: "/ɪɡˈnɔːr/", pos: "v.", meaning: "忽視；不理會", tag: "高中",
-        example: "Harry could not ignore the warnings in his scar, even when others dismissed them as imagination.",
-        exTrans: "哈利無法忽視疤痕發出的警告，即使別人認為那只是他的想像。" },
-    { id: "h117", word: "imprison", phonetic: "/ɪmˈprɪzn/", pos: "v.", meaning: "監禁；囚禁", tag: "高中",
-        example: "Many innocent people were imprisoned in Azkaban during Voldemort's reign of terror.",
-        exTrans: "佛地魔恐怖統治期間，許多無辜的人被關進了阿茲卡班。" },
-    { id: "h118", word: "inspire", phonetic: "/ɪnˈspaɪər/", pos: "v.", meaning: "激勵；啟發", tag: "高中",
-        example: "Harry's bravery inspired those around him to find courage they did not know they possessed.",
-        exTrans: "哈利的勇氣激勵了身邊的人，讓他們找到了自己不知道擁有的勇氣。" },
-    { id: "h119", word: "intelligence", phonetic: "/ɪnˈtelɪdʒəns/", pos: "n.", meaning: "智力；情報", tag: "高中",
-        example: "Hermione's intelligence was her greatest weapon, sharper and more reliable than any spell.",
-        exTrans: "妙麗的智力是她最強大的武器，比任何咒語都更鋒利、更可靠。" },
-    { id: "h120", word: "intention", phonetic: "/ɪnˈtenʃn/", pos: "n.", meaning: "意圖；目的", tag: "高中",
-        example: "The Room of Requirement appeared according to the intention of the seeker — it knew what was truly needed.",
-        exTrans: "有求必應屋按照尋求者的意圖出現——它知道什麼才是真正被需要的。" },
-    { id: "h121", word: "involve", phonetic: "/ɪnˈvɒlv/", pos: "v.", meaning: "涉及；包含", tag: "高中",
-        example: "Every decision Harry made seemed to involve risk, but he accepted that as the cost of fighting Voldemort.",
-        exTrans: "哈利做出的每一個決定似乎都涉及風險，但他接受這是對抗佛地魔所必須付出的代價。" },
-    { id: "h122", word: "jealous", phonetic: "/ˈdʒeləs/", pos: "adj.", meaning: "嫉妒的；猜忌的", tag: "高中",
-        example: "Ron grew jealous of Harry's fame, but their friendship proved stronger than any petty rivalry.",
-        exTrans: "榮恩曾對哈利的名氣感到嫉妒，但他們的友誼被證明比任何小小的競爭都要堅固。" },
-    { id: "h123", word: "journey", phonetic: "/ˈdʒɜːni/", pos: "n.", meaning: "旅程；旅行", tag: "高中",
-        example: "The journey to find and destroy the Horcruxes took Harry across Britain and into the heart of danger.",
-        exTrans: "尋找並摧毀魂器的旅程帶領哈利走遍不列顛，深入危險的核心。" },
-    { id: "h124", word: "judge", phonetic: "/dʒʌdʒ/", pos: "v./n.", meaning: "判斷；評判", tag: "高中",
-        example: "Harry learned not to judge people too quickly — even Snape was not what he appeared to be.",
-        exTrans: "哈利學到不要輕易評判他人——就連石內卜也並非表面上看起來的那個樣子。" },
-    { id: "h125", word: "knowledge", phonetic: "/ˈnɒlɪdʒ/", pos: "n.", meaning: "知識；了解", tag: "高中",
-        example: "Voldemort's thirst for knowledge was ultimately a thirst for power and immortality.",
-        exTrans: "佛地魔對知識的渴求，歸根究柢是對權力與不死之身的渴求。" },
-    { id: "h126", word: "lack", phonetic: "/læk/", pos: "v./n.", meaning: "缺乏；不足", tag: "高中",
-        example: "What Harry lacked in formal training, he made up for with instinct, bravery, and the help of loyal friends.",
-        exTrans: "哈利在正規訓練上的不足，靠著本能、勇氣和忠實朋友的幫助彌補了。" },
-    { id: "h127", word: "legend", phonetic: "/ˈledʒənd/", pos: "n.", meaning: "傳奇；傳說", tag: "高中",
-        example: "The legend of the Boy Who Lived spread through the wizarding world long before Harry knew his own story.",
-        exTrans: "那個大難不死男孩的傳奇在哈利了解自己故事之前，早已傳遍整個巫師界。" },
-    { id: "h128", word: "loyal", phonetic: "/ˈlɔɪəl/", pos: "adj.", meaning: "忠誠的；忠心的", tag: "高中",
-        example: "Ron and Hermione were the most loyal friends Harry could have hoped for in his darkest hours.",
-        exTrans: "榮恩和妙麗是哈利在最黑暗時刻所能期望擁有的最忠誠的朋友。" },
-    { id: "h129", word: "magnificent", phonetic: "/mæɡˈnɪfɪsnt/", pos: "adj.", meaning: "壯觀的；宏偉的", tag: "高中",
-        example: "Hogwarts was magnificent — a castle of towers and turrets rising from the edge of a dark lake.",
-        exTrans: "霍格華茲宏偉壯觀——一座矗立在黑色湖畔的塔樓城堡。" },
-    { id: "h130", word: "manage", phonetic: "/ˈmænɪdʒ/", pos: "v.", meaning: "設法做到；管理", tag: "高中",
-        example: "Somehow Harry always managed to survive situations that should have been impossible to escape.",
-        exTrans: "哈利總是能設法在那些本不可能逃脫的處境中存活下來。" },
-    { id: "h131", word: "memory", phonetic: "/ˈmeməri/", pos: "n.", meaning: "記憶；回憶", tag: "高中",
-        example: "The Pensieve allowed wizards to revisit memory and see events they had long forgotten.",
-        exTrans: "冥想盆讓巫師能夠重溫記憶，看到他們早已遺忘的往事。" },
-    { id: "h132", word: "mercy", phonetic: "/ˈmɜːsi/", pos: "n.", meaning: "仁慈；慈悲", tag: "高中",
-        example: "Dumbledore believed in mercy even for those who had committed terrible wrongs, if they showed true remorse.",
-        exTrans: "鄧不利多相信，即使對那些犯下嚴重過錯的人，只要他們表現出真正的悔意，也應給予慈悲。" },
-    { id: "h133", word: "miracle", phonetic: "/ˈmɪrəkl/", pos: "n.", meaning: "奇蹟；神奇之事", tag: "高中",
-        example: "Harry's survival as a baby was considered a miracle that altered the course of wizarding history.",
-        exTrans: "哈利嬰兒時期的存活被視為一個奇蹟，改變了巫師歷史的進程。" },
-    { id: "h134", word: "miserable", phonetic: "/ˈmɪzrəbl/", pos: "adj.", meaning: "痛苦的；悲慘的", tag: "高中",
-        example: "Harry spent many miserable summers locked away in the cupboard under the Dursleys' stairs.",
-        exTrans: "哈利在德思禮家樓梯下的碗櫥裡度過了許多痛苦的夏天。" },
-    { id: "h135", word: "mission", phonetic: "/ˈmɪʃn/", pos: "n.", meaning: "任務；使命", tag: "高中",
-        example: "Dumbledore gave Harry one final mission: find and destroy the last Horcrux before Voldemort could act.",
-        exTrans: "鄧不利多給了哈利最後一個任務：在佛地魔採取行動之前，找到並摧毀最後一個魂器。" },
-    { id: "h136", word: "modest", phonetic: "/ˈmɒdɪst/", pos: "adj.", meaning: "謙遜的；適中的", tag: "高中",
-        example: "Despite being famous since birth, Harry remained modest and never sought fame for himself.",
-        exTrans: "儘管從出生起就享有盛名，哈利依然謙遜，從不為自己追求名聲。" },
-    { id: "h137", word: "mysterious", phonetic: "/mɪˈstɪəriəs/", pos: "adj.", meaning: "神秘的；難以理解的", tag: "高中",
-        example: "The Department of Mysteries contained rooms full of mysterious objects that even Dumbledore could not fully explain.",
-        exTrans: "神秘事務司裡有許多房間，裡面裝滿了連鄧不利多也無法完全解釋的神秘物品。" },
-    { id: "h138", word: "necessary", phonetic: "/ˈnesəsəri/", pos: "adj.", meaning: "必要的；必需的", tag: "高中",
-        example: "Sacrifices, Dumbledore explained, were sometimes necessary in the battle between good and evil.",
-        exTrans: "鄧不利多解釋說，在善惡之戰中，犧牲有時是必要的。" },
-    { id: "h139", word: "neglect", phonetic: "/nɪˈɡlekt/", pos: "v./n.", meaning: "忽視；疏忽", tag: "高中",
-        example: "The Dursleys' neglect left Harry emotionally resilient but starved of the love every child deserves.",
-        exTrans: "德思禮一家的忽視讓哈利的情感變得堅韌，但也使他缺乏每個孩子都應得的愛。" },
-    { id: "h140", word: "nervous", phonetic: "/ˈnɜːvəs/", pos: "adj.", meaning: "緊張的；不安的", tag: "高中",
-        example: "Harry felt nervous every time he faced Voldemort, but he never let that nervousness stop him.",
-        exTrans: "每次面對佛地魔，哈利都感到緊張，但他從未讓緊張阻止自己前進。" },
-    // ── 新增托福單字 t021–t040 ──
-    { id: "t021", word: "abstract", phonetic: "/ˈæbstrækt/", pos: "adj.", meaning: "抽象的；難懂的", tag: "托福",
-        example: "The magic of love was abstract and invisible, yet it was the most powerful force in the wizarding world.",
-        exTrans: "愛的魔力是抽象而無形的，卻是巫師世界中最強大的力量。" },
-    { id: "t022", word: "accurate", phonetic: "/ˈækjərət/", pos: "adj.", meaning: "精確的；準確的", tag: "托福",
-        example: "Hermione's memory was so accurate she could recite entire passages from textbooks word for word.",
-        exTrans: "妙麗的記憶力極為精確，她能夠一字不差地背誦整本教科書的段落。" },
-    { id: "t023", word: "acquire", phonetic: "/əˈkwaɪər/", pos: "v.", meaning: "獲得；習得", tag: "托福",
-        example: "Over years of practice, Harry acquired a rare skill in non-verbal spellcasting that few students mastered.",
-        exTrans: "經過多年練習，哈利習得了一種罕見的無語咒術技能，很少有學生能掌握。" },
-    { id: "t024", word: "advocate", phonetic: "/ˈædvəkeɪt/", pos: "v./n.", meaning: "提倡；倡導者", tag: "托福",
-        example: "Hermione became a passionate advocate for house-elf rights, founding the Society for the Promotion of Elfish Welfare.",
-        exTrans: "妙麗成為家養小精靈權利的熱情倡導者，創立了促進精靈福利協會。" },
-    { id: "t025", word: "aggressive", phonetic: "/əˈɡresɪv/", pos: "adj.", meaning: "侵略性的；積極進取的", tag: "托福",
-        example: "Voldemort's aggressive expansion of power left no corner of the wizarding world untouched by fear.",
-        exTrans: "佛地魔對權力的侵略性擴張讓巫師界的每一個角落都籠罩在恐懼之中。" },
-    { id: "t026", word: "ambitious", phonetic: "/æmˈbɪʃəs/", pos: "adj.", meaning: "有野心的；渴望成功的", tag: "托福",
-        example: "Tom Riddle was the most ambitious student Hogwarts had ever seen, though his ambition led to darkness.",
-        exTrans: "湯姆·瑞斗是霍格華茲有史以來最有野心的學生，儘管他的野心最終走向了黑暗。" },
-    { id: "t027", word: "analogy", phonetic: "/əˈnælədʒi/", pos: "n.", meaning: "類比；比喻", tag: "托福",
-        example: "Dumbledore used an analogy about light and darkness to help Harry understand the nature of choices.",
-        exTrans: "鄧不利多用光與黑暗的比喻來幫助哈利理解選擇的本質。" },
-    { id: "t028", word: "anticipate", phonetic: "/ænˈtɪsɪpeɪt/", pos: "v.", meaning: "預期；期待", tag: "托福",
-        example: "No one could have anticipated that the quiet orphan boy would one day stand against the Dark Lord himself.",
-        exTrans: "沒有人能夠預料到，那個安靜的孤兒男孩有一天會親自對抗黑魔王。" },
-    { id: "t029", word: "arbitrary", phonetic: "/ˈɑːbɪtrəri/", pos: "adj.", meaning: "任意的；武斷的", tag: "托福",
-        example: "The Ministry's arbitrary rules during Voldemort's reign often targeted innocent people.",
-        exTrans: "佛地魔統治期間，魔法部武斷的規定往往針對無辜的人。" },
-    { id: "t030", word: "assert", phonetic: "/əˈsɜːt/", pos: "v.", meaning: "斷言；維護", tag: "托福",
-        example: "Harry asserted his right to know the truth about the prophecy, refusing to be kept in ignorance.",
-        exTrans: "哈利堅持他有權知道預言的真相，拒絕繼續被蒙在鼓裡。" },
-    { id: "t031", word: "compensate", phonetic: "/ˈkɒmpenseɪt/", pos: "v.", meaning: "補償；彌補", tag: "托福",
-        example: "Hagrid tried to compensate for Harry's unhappy childhood with small acts of overwhelming kindness.",
-        exTrans: "海格試圖用大量的體貼善意來補償哈利不幸的童年。" },
-    { id: "t032", word: "complex", phonetic: "/ˈkɒmpleks/", pos: "adj.", meaning: "複雜的；複合的", tag: "托福",
-        example: "Snape was the most complex character in Harry's life — a villain who was also, in his own way, a hero.",
-        exTrans: "石內卜是哈利生命中最複雜的人物——一個反派，卻也以他自己的方式成了英雄。" },
-    { id: "t033", word: "conceive", phonetic: "/kənˈsiːv/", pos: "v.", meaning: "構思；設想", tag: "托福",
-        example: "Voldemort could not conceive of a magic more powerful than his own — and that blindness destroyed him.",
-        exTrans: "佛地魔無法設想有比他自己更強大的魔法——而這種盲目最終毀了他。" },
-    { id: "t034", word: "conform", phonetic: "/kənˈfɔːm/", pos: "v.", meaning: "遵從；符合", tag: "托福",
-        example: "Harry never truly conformed to what others expected of him — he forged his own path with courage.",
-        exTrans: "哈利從未真正遵從他人對他的期望——他以勇氣開闢了自己的道路。" },
-    { id: "t035", word: "contradict", phonetic: "/ˌkɒntrəˈdɪkt/", pos: "v.", meaning: "矛盾；反駁", tag: "托福",
-        example: "The facts contradicted the Ministry's official story, and Hermione made sure everyone knew it.",
-        exTrans: "事實與魔法部的官方說法相矛盾，妙麗確保每個人都知道這一點。" },
-    { id: "t036", word: "criterion", phonetic: "/kraɪˈtɪəriən/", pos: "n.", meaning: "標準；準則", tag: "托福",
-        example: "The Sorting Hat's criterion for placing students went beyond house traits to the very core of their character.",
-        exTrans: "分院帽分配學生的標準超越了學院特質，深入到學生性格的核心。" },
-    { id: "t037", word: "crucial", phonetic: "/ˈkruːʃl/", pos: "adj.", meaning: "關鍵的；至關重要的", tag: "托福",
-        example: "The timing of Harry's arrival at the Ministry was crucial — a moment's delay would have cost lives.",
-        exTrans: "哈利抵達魔法部的時機至關重要——哪怕晚一刻，就可能付出生命的代價。" },
-    { id: "t038", word: "cultivate", phonetic: "/ˈkʌltɪveɪt/", pos: "v.", meaning: "培養；耕種", tag: "托福",
-        example: "Dumbledore had carefully cultivated Harry's trust over years, preparing him for the truth he must face.",
-        exTrans: "鄧不利多多年來精心培養了哈利的信任，為他準備好面對那個他必須知道的真相。" },
-    { id: "t039", word: "cynic", phonetic: "/ˈsɪnɪk/", pos: "n.", meaning: "憤世嫉俗者；嘲諷者", tag: "托福",
-        example: "Years of hardship could have made Harry a cynic, but his friends kept his faith in goodness alive.",
-        exTrans: "多年的艱辛原本可能讓哈利變成憤世嫉俗者，但他的朋友們讓他對善良的信念保持活力。" },
-    { id: "t040", word: "defiant", phonetic: "/dɪˈfaɪənt/", pos: "adj.", meaning: "不服從的；挑釁的", tag: "托福",
-        example: "Harry remained defiant even as Voldemort stood before him demanding surrender in the Great Hall.",
-        exTrans: "即使佛地魔站在他面前、在大禮堂要求他投降，哈利仍然不屈不撓。" },
-];
-const NOVELS = [
-    { id: 1, need: 5, title: "哈利波特：魔法石", subtitle: "Harry Potter and the Philosopher's Stone", emoji: "🪄",
-        excerpt: `Mr and Mrs Dursley, of number four, Privet Drive, were proud to say that they were perfectly normal, thank you very much. They were the last people you'd expect to be involved in anything strange or mysterious, because they just didn't hold with such things.\n\nMr Dursley was the director of a firm called Grunnings, which made drills. He was a big, beefy man with hardly any neck, although he did have a very large moustache. Mrs Dursley was thin and blonde and had nearly twice the usual amount of neck, which came in very useful as she spent so much of her time craning over garden fences, spying on the neighbours.` },
-    { id: 2, need: 10, title: "哈利波特：消失的密室", subtitle: "Harry Potter and the Chamber of Secrets", emoji: "🐍",
-        excerpt: `Not for the first time, an argument had broken out over breakfast at number four, Privet Drive. Mr Vernon Dursley had been woken in the early hours of the morning by a loud, hooting noise from his nephew Harry's room.\n\n'Third time this week!' he roared across the table. 'If you can't control that owl, it'll have to go!'` },
-    { id: 3, need: 15, title: "哈利波特：阿茲卡班的逃犯", subtitle: "Harry Potter and the Prisoner of Azkaban", emoji: "🐺",
-        excerpt: `Harry Potter was a highly unusual boy in many ways. For one thing, he hated the summer holidays more than any other time of year. For another, he really wanted to do his homework but was forced to do it in secret, in the dead of the night. And he also happened to be a wizard.` },
-    { id: 4, need: 20, title: "哈利波特：火焰杯", subtitle: "Harry Potter and the Goblet of Fire", emoji: "🏆",
-        excerpt: `The villagers of Little Hangleton still called it 'the Riddle House', even though it had been many years since the Riddle family had lived there. It stood on a hill overlooking the village, some of its windows boarded, tiles missing from its roof, the garden overgrown and unruly.` },
-];
-const EBBINGHAUS = [1, 2, 4, 7, 15, 30, 60, 120];
-const WORDS_PER_DAY = 5;
-const XP_OK = 20, XP_BONUS = 10, XP_LVL = 100;
-function nextReview(level) {
-    const d = new Date();
-    d.setDate(d.getDate() + EBBINGHAUS[Math.min(level, EBBINGHAUS.length - 1)]);
-    return d.toISOString();
-}
-function isDue(p) { return (p === null || p === void 0 ? void 0 : p.nextReview) && new Date() >= new Date(p.nextReview); }
-function shuffled(arr) {
-    const a = [...arr];
-    for (let i = a.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [a[i], a[j]] = [a[j], a[i]];
-    }
-    return a;
-}
-function getLvl(xp) { return Math.floor(xp / XP_LVL) + 1; }
-function getXpRem(xp) { return xp % XP_LVL; }
-// ─── Streak / Check-in helpers ────────────────────────────────────────────────
-const DAY_NAMES = ["日", "一", "二", "三", "四", "五", "六"];
-// Returns array of last-N-days {label, dateStr, checked}
-function getWeekDays(checkedDates = [], n = 7) {
-    const days = [];
-    const today = new Date();
-    for (let i = n - 1; i >= 0; i--) {
-        const d = new Date(today);
-        d.setDate(today.getDate() - i);
-        const ds = d.toDateString();
-        days.push({
-            label: DAY_NAMES[d.getDay()],
-            dateStr: ds,
-            isToday: i === 0,
-            checked: checkedDates.includes(ds),
-        });
-    }
-    return days;
-}
-// Compute current streak from sorted checkedDates array
-function calcStreak(checkedDates = []) {
-    if (!checkedDates.length)
-        return 0;
-    const sorted = [...checkedDates].sort((a, b) => new Date(b) - new Date(a));
-    const today = new Date().toDateString();
-    const yesterday = new Date(Date.now() - 86400000).toDateString();
-    // Must have checked today or yesterday to keep streak alive
-    if (sorted[0] !== today && sorted[0] !== yesterday)
-        return 0;
-    let count = 1;
-    for (let i = 1; i < sorted.length; i++) {
-        const prev = new Date(sorted[i - 1]);
-        const cur = new Date(sorted[i]);
-        const diff = Math.round((prev - cur) / 86400000);
-        if (diff === 1)
-            count++;
-        else
-            break;
-    }
-    return count;
-}
-const SK = "wizword_v12";
-function load() { try {
-    return JSON.parse(localStorage.getItem(SK) || "{}");
-}
-catch (_a) {
-    return {};
-} }
-function save(d) { try {
-    localStorage.setItem(SK, JSON.stringify(d));
-}
-catch (_a) { } }
-// ─── Natural TTS ─────────────────────────────────────────────────────────────
-// Picks the best available English voice, preferring high-quality neural/UK ones.
-// Splits sentences at punctuation so the synthesiser can breathe naturally.
-let _voice = null;
-function pickVoice() {
-    var _a;
-    if (_voice)
-        return _voice;
-    const vs = ((_a = window.speechSynthesis) === null || _a === void 0 ? void 0 : _a.getVoices()) || [];
-    // Priority: premium macOS/iOS neural > Google Neural > UK > any EN
-    const want = [
-        "Samantha (Enhanced)", "Samantha", "Daniel (Enhanced)", "Daniel",
-        "Karen (Enhanced)", "Karen", "Moira", "Serena",
-        "Google UK English Female", "Google UK English Male",
-        "Google US English",
-    ];
-    for (const n of want) {
-        const v = vs.find(v => v.name === n);
-        if (v) {
-            _voice = v;
-            return v;
-        }
-    }
-    // Fallback: prefer en-GB, then en-US, then any en
-    _voice = vs.find(v => v.lang === "en-GB")
-        || vs.find(v => v.lang === "en-US")
-        || vs.find(v => v.lang.startsWith("en"))
-        || null;
-    return _voice;
-}
-// Split text at sentence boundaries so synthesis sounds natural with real pauses
-function splitSentences(text) {
-    var _a;
-    return ((_a = text.match(/[^.!?—]+[.!?—]*/g)) === null || _a === void 0 ? void 0 : _a.map(s => s.trim()).filter(Boolean)) || [text];
-}
-let _speaking = false;
-function tts(text, { rate = 0.92, pitch = 1.0, onDone } = {}) {
-    if (!window.speechSynthesis)
-        return;
-    window.speechSynthesis.cancel();
-    _speaking = true;
-    const chunks = splitSentences(text);
-    let i = 0;
-    const speakNext = () => {
-        if (i >= chunks.length || !_speaking) {
-            if (onDone)
-                onDone();
-            _speaking = false;
-            return;
-        }
-        const u = new SpeechSynthesisUtterance(chunks[i++]);
-        u.lang = "en-GB";
-        u.rate = rate;
-        u.pitch = pitch;
-        u.volume = 1;
-        const v = pickVoice();
-        if (v)
-            u.voice = v;
-        u.onend = () => {
-            // tiny pause between sentences for naturalness
-            setTimeout(speakNext, 160);
-        };
-        u.onerror = speakNext;
-        window.speechSynthesis.speak(u);
-    };
-    const go = () => speakNext();
-    if (window.speechSynthesis.getVoices().length)
-        go();
-    else
-        window.speechSynthesis.onvoiceschanged = go;
-}
-function speakWord(w) { tts(w, { rate: 0.78, pitch: 1.02 }); }
-function speakSentence(s) { tts(s, { rate: 0.88, pitch: 1.0 }); }
-function speakNovel(s) { tts(s, { rate: 0.84, pitch: 0.98 }); }
-function stopTTS() { var _a; _speaking = false; (_a = window.speechSynthesis) === null || _a === void 0 ? void 0 : _a.cancel(); }
-// ─── SpeakBtn – reusable audio button with playing state ─────────────────────
-function SpeakBtn({ text, mode = "sentence", label = "🔊", style: extraStyle }) {
-    const [playing, setPlaying] = useState(false);
-    const speak = mode === "word" ? speakWord : speakSentence;
-    const handleClick = (e) => {
-        e.stopPropagation();
-        if (playing) {
-            stopTTS();
-            setPlaying(false);
-            return;
-        }
-        setPlaying(true);
-        tts(text, mode === "word"
-            ? { rate: 0.78, pitch: 1.02, onDone: () => setPlaying(false) }
-            : { rate: 0.88, pitch: 1.0, onDone: () => setPlaying(false) });
-    };
-    return (React.createElement("button", { onClick: handleClick, style: Object.assign({ background: playing ? "#7c3aed22" : "none", border: `1.5px solid ${playing ? "#7c3aed" : "#30363d"}`, borderRadius: 20, padding: "5px 12px", fontFamily: "monospace", fontSize: ".6rem", cursor: "pointer", color: playing ? "#a78bfa" : "#8b949e", transition: "all .18s", display: "inline-flex", alignItems: "center", gap: 5, whiteSpace: "nowrap" }, extraStyle) },
-        React.createElement("span", { style: { display: "inline-block", animation: playing ? "spin .8s linear infinite" : "none", fontSize: ".72rem" } }, playing ? "⏸" : label),
-        label !== "🔊" && label !== "🎙" && React.createElement("span", null, label)));
-}
-// ─── Highlight word ───────────────────────────────────────────────────────────
-function Hl({ s, w }) {
-    const re = new RegExp(`(${w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")})`, "gi");
-    return React.createElement(React.Fragment, null, s.split(re).map((p, i) => p.toLowerCase() === w.toLowerCase()
-        ? React.createElement("b", { key: i, style: { color: "#f0c040", fontStyle: "normal" } }, p) : p));
-}
-// ─── Swipeable Flash Card (front: word + example + translation, back: meaning) ─
-function FlashCard({ card, flipped, onFlip, onSwipe, isFirst }) {
-    const sx = useRef(null), sy = useRef(null);
-    const [dx, setDx] = useState(0);
-    const [drag, setDrag] = useState(false);
-    const [exit, setExit] = useState(0);
-    const begin = (x, y) => { sx.current = x; sy.current = y; setDrag(true); };
-    const move = (x, y) => {
-        if (!drag || sx.current == null)
-            return;
-        const mx = x - sx.current, my = Math.abs(y - sy.current);
-        if (my > Math.abs(mx) * 1.4)
-            return;
-        setDx(mx);
-    };
-    const end = () => {
-        setDrag(false);
-        const d = dx;
-        setDx(0);
-        sx.current = null;
-        if (Math.abs(d) > 68) {
-            const dir = d > 0 ? 1 : -1;
-            setExit(dir);
-            setTimeout(() => { setExit(0); onSwipe(dir); }, 220);
-        }
-    };
-    const tx = exit ? exit * 130 : drag ? dx : 0;
-    const rot = exit ? exit * 10 : drag ? dx * 0.033 : 0;
-    const tr = exit ? "transform .22s ease-in,opacity .22s" : drag ? "none" : "transform .28s ease";
-    const tagStyle = card.tag === "高中"
-        ? { background: "#1a2a1a", border: "1px solid #22c55e44", color: "#22c55e" }
-        : { background: "#1a1a2e", border: "1px solid #7c3aed44", color: "#a78bfa" };
-    return (React.createElement("div", { style: { position: "relative", touchAction: "pan-y", userSelect: "none", marginBottom: 12 }, onMouseDown: e => begin(e.clientX, e.clientY), onMouseMove: e => drag && move(e.clientX, e.clientY), onMouseUp: end, onMouseLeave: drag ? end : undefined, onTouchStart: e => begin(e.touches[0].clientX, e.touches[0].clientY), onTouchMove: e => move(e.touches[0].clientX, e.touches[0].clientY), onTouchEnd: end },
-        React.createElement("div", { style: { position: "absolute", inset: 0, top: 10, borderRadius: 20, background: "#1a1f28",
-                transform: "scale(0.95)", zIndex: 0, opacity: .3, pointerEvents: "none" } }),
-        React.createElement("div", { style: { perspective: 1200, zIndex: 1, position: "relative" } },
-            React.createElement("div", { onClick: () => { if (Math.abs(dx) < 8 && !exit)
-                    onFlip(); }, style: { width: "100%", minHeight: 460, transformStyle: "preserve-3d",
-                    transform: `translateX(${tx}px) rotate(${rot}deg) rotateY(${flipped ? 180 : 0}deg)`,
-                    transition: tr, opacity: exit ? 0 : 1, cursor: drag ? "grabbing" : "pointer",
-                    borderRadius: 20, position: "relative" } },
-                React.createElement("div", { style: { position: "absolute", inset: 0, backfaceVisibility: "hidden", WebkitBackfaceVisibility: "hidden",
-                        borderRadius: 20, background: "#161b22", border: "1px solid #30363d",
-                        boxShadow: "0 8px 40px rgba(0,0,0,.5)", display: "flex", flexDirection: "column", padding: "24px 22px" } },
-                    React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 } },
-                        React.createElement("div", { style: Object.assign({ fontFamily: "monospace", fontSize: ".56rem", padding: "2px 8px", borderRadius: 20 }, tagStyle) }, card.tag === "高中" ? "📗 高中7000" : "🎓 托福核心"),
-                        React.createElement("span", { style: { fontFamily: "monospace", fontSize: ".54rem", color: "#2a3545" } }, isFirst ? "滑動切換 · 點擊翻面" : "← 滑 · 點翻")),
-                    React.createElement("div", { style: { fontFamily: "'Cinzel',serif", fontSize: "2.4rem", fontWeight: 900, color: "#f0c040",
-                            letterSpacing: ".04em", lineHeight: 1, marginBottom: 4 } }, card.word),
-                    React.createElement("div", { style: { fontFamily: "monospace", fontSize: ".68rem", color: "#8b949e", marginBottom: 3 } }, card.phonetic),
-                    React.createElement("div", { style: { fontFamily: "monospace", fontSize: ".6rem", color: "#c9903a", letterSpacing: ".07em", marginBottom: 14 } }, card.pos),
-                    React.createElement("div", { style: { height: 1, background: "#21262d", marginBottom: 14 } }),
-                    React.createElement("div", { style: { fontFamily: "Georgia,serif", fontStyle: "italic", fontSize: ".87rem",
-                            color: "#a0aab4", lineHeight: 1.72, marginBottom: 10 } },
-                        React.createElement(Hl, { s: card.example, w: card.word })),
-                    React.createElement("div", { style: { fontFamily: "Georgia,serif", fontSize: ".78rem", color: "#6a7a8a",
-                            lineHeight: 1.6, paddingLeft: 8,
-                            borderLeft: "2px solid #2a3545", fontStyle: "normal" } }, card.exTrans),
-                    React.createElement("div", { style: { marginTop: "auto", paddingTop: 14, display: "flex", justifyContent: "flex-end", gap: 7 } },
-                        React.createElement(SpeakBtn, { text: card.word, mode: "word", label: "\uD83D\uDD0A \u55AE\u5B57" }),
-                        React.createElement(SpeakBtn, { text: card.example, mode: "sentence", label: "\uD83C\uDF99 \u4F8B\u53E5" }))),
-                React.createElement("div", { style: { position: "absolute", inset: 0, backfaceVisibility: "hidden", WebkitBackfaceVisibility: "hidden",
-                        borderRadius: 20, background: "linear-gradient(160deg,#1c1033,#0f0a1e)",
-                        border: "1px solid #3d2e6b", boxShadow: "0 8px 40px rgba(124,58,237,.2)",
-                        transform: "rotateY(180deg)", display: "flex", flexDirection: "column",
-                        alignItems: "center", justifyContent: "center", textAlign: "center", padding: "32px 26px" } },
-                    React.createElement("div", { style: { fontFamily: "monospace", fontSize: ".54rem", letterSpacing: ".1em",
-                            textTransform: "uppercase", color: "#7c3aed55", marginBottom: 16 } }, "\u4E2D\u6587\u610F\u601D"),
-                    React.createElement("div", { style: { fontFamily: "Georgia,serif", fontSize: "2rem", fontWeight: 700,
-                            color: "#f0c040", lineHeight: 1.3, marginBottom: 10 } }, card.meaning),
-                    React.createElement("div", { style: { fontFamily: "monospace", fontSize: ".68rem", color: "#c9903a",
-                            letterSpacing: ".08em", marginBottom: 18 } }, card.pos),
-                    React.createElement("div", { style: { display: "flex", gap: 8, justifyContent: "center", marginBottom: 16 } },
-                        React.createElement(SpeakBtn, { text: card.word, mode: "word", label: "\uD83D\uDD0A \u55AE\u5B57" }),
-                        React.createElement(SpeakBtn, { text: card.example, mode: "sentence", label: "\uD83C\uDF99 \u4F8B\u53E5" })),
-                    React.createElement("div", { style: { fontFamily: "monospace", fontSize: ".46rem", color: "#2d1e4a",
-                            textTransform: "uppercase", letterSpacing: ".08em" } }, "\u2014 Harry Potter")))),
-        drag && dx < -30 && React.createElement("div", { style: { position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", fontSize: "1.4rem", color: "#f0c040", opacity: Math.min(1, Math.abs(dx) / 90), pointerEvents: "none" } }, "\u2192"),
-        drag && dx > 30 && React.createElement("div", { style: { position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", fontSize: "1.4rem", color: "#f0c040", opacity: Math.min(1, dx / 90), pointerEvents: "none" } }, "\u2190")));
-}
-// ─── SpellCard – shared spelling UI for review + wrong-review ────────────────
-// Shows the card info (meaning, gapped example, phonetic) and an input box.
-// Caller manages: input, setInput, spellRes, inputRef, onSubmit, onRetry, onSkip
-function SpellCard({ card, input, setInput, spellRes, inputRef, onSubmit, onRetry, onSkip, accentColor = "#f0c040", isLast = false }) {
-    const tagStyle = card.tag === "高中"
-        ? { background: "#1a2a1a", border: "1px solid #22c55e44", color: "#22c55e" }
-        : { background: "#1a1a2e", border: "1px solid #7c3aed44", color: "#a78bfa" };
-    const gapped = card.example.replace(new RegExp(card.word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "gi"), ch => "＿".repeat(ch.length));
-    return (React.createElement("div", { style: { background: "#161b22", border: "1px solid #30363d", borderRadius: 20,
-            padding: 22, marginBottom: 14, textAlign: "center" } },
-        React.createElement("div", { style: { display: "flex", justifyContent: "center", marginBottom: 10 } },
-            React.createElement("div", { style: Object.assign({ fontFamily: "monospace", fontSize: ".56rem", padding: "2px 9px", borderRadius: 20 }, tagStyle) }, card.tag === "高中" ? "📗 高中7000" : "🎓 托福核心")),
-        React.createElement("div", { style: { fontFamily: "monospace", fontSize: ".56rem", letterSpacing: ".1em",
-                textTransform: "uppercase", color: "#7c3aed", marginBottom: 8 } }, "\u6839\u64DA\u4E2D\u6587\u610F\u601D\uFF0C\u9ED8\u5BEB\u82F1\u6587\u55AE\u5B57"),
-        React.createElement("div", { style: { fontFamily: "Georgia,serif", fontSize: "1.5rem", fontWeight: 600,
-                color: "#f0c040", marginBottom: 3 } }, card.meaning),
-        React.createElement("div", { style: { fontFamily: "monospace", fontSize: ".62rem", color: "#8b949e",
-                marginBottom: 14 } },
-            card.pos,
-            " \u00B7 ",
-            card.phonetic),
-        React.createElement("div", { style: { background: "#0d1117", borderRadius: 10, padding: "11px 13px",
-                marginBottom: 14, border: "1px solid #21262d", textAlign: "left" } },
-            React.createElement("div", { style: { fontFamily: "Georgia,serif", fontStyle: "italic", fontSize: ".84rem",
-                    color: "#8b949e", lineHeight: 1.7, marginBottom: 8 } },
-                "\u300C",
-                gapped,
-                "\u300D"),
-            React.createElement("div", { style: { fontFamily: "Georgia,serif", fontSize: ".74rem", color: "#5a6a7a",
-                    lineHeight: 1.55, marginBottom: 8, paddingLeft: 6, borderLeft: "2px solid #2a3545" } }, card.exTrans),
-            React.createElement("div", { style: { display: "flex", gap: 7, flexWrap: "wrap" } },
-                React.createElement(SpeakBtn, { text: card.word, mode: "word", label: "\uD83D\uDD0A \u55AE\u5B57" }),
-                React.createElement(SpeakBtn, { text: card.example, mode: "sentence", label: "\uD83C\uDF99 \u4F8B\u53E5" }))),
-        React.createElement("div", { style: { display: "flex", justifyContent: "center", gap: 4, flexWrap: "wrap", marginBottom: 14 } }, card.word.split("").map((ch, i) => {
-            const typed = input[i] || "";
-            const base = { width: 30, height: 38, borderRadius: 6, display: "flex", alignItems: "center",
-                justifyContent: "center", fontFamily: "'Cinzel',serif", fontSize: ".84rem",
-                fontWeight: 700, transition: "all .2s", border: "1.5px solid" };
-            const st = spellRes === "correct"
-                ? Object.assign(Object.assign({}, base), { background: "#0d2a0d", borderColor: "#22c55e", color: "#22c55e" }) : spellRes === "wrong"
-                ? Object.assign(Object.assign({}, base), { background: "#2a0d0d", borderColor: "#ef4444", color: "#ef4444" }) : typed
-                ? Object.assign(Object.assign({}, base), { background: "#1a1a2e", borderColor: "#7c3aed", color: "#a78bfa" }) : Object.assign(Object.assign({}, base), { background: "#21262d", borderColor: "#30363d", color: "#e6edf3" });
-            return React.createElement("div", { key: i, style: st }, spellRes ? ch : typed);
-        })),
-        React.createElement("input", { ref: inputRef, style: { width: "100%", borderRadius: 12, padding: "13px 15px",
-                fontFamily: "'Cinzel',serif", fontSize: "1.15rem", color: "#e6edf3",
-                textAlign: "center", letterSpacing: ".08em", outline: "none",
-                background: spellRes === "correct" ? "#0d2a0d" : spellRes === "wrong" ? "#2a0d0d" : "#21262d",
-                border: `2px solid ${spellRes === "correct" ? "#22c55e" : spellRes === "wrong" ? "#ef4444" : "#30363d"}`,
-            }, value: input, onChange: e => !spellRes && setInput(e.target.value), onKeyDown: e => e.key === "Enter" && onSubmit(), placeholder: "\u8F38\u5165\u82F1\u6587\uFF0C\u6309 Enter\u2026", disabled: !!spellRes, autoComplete: "off", autoCorrect: "off", spellCheck: false }),
-        spellRes && (React.createElement("div", { style: { marginTop: 11, fontFamily: "monospace", fontSize: ".78rem",
-                color: spellRes === "correct" ? "#22c55e" : "#ef4444", lineHeight: 1.6 } }, spellRes === "correct"
-            ? React.createElement(React.Fragment, null, "\u2713 \u6B63\u78BA\uFF01")
-            : React.createElement(React.Fragment, null,
-                React.createElement("span", null, "\u2717 \u6B63\u78BA\u7B54\u6848\uFF1A"),
-                React.createElement("b", { style: { fontFamily: "'Cinzel',serif", fontSize: ".95rem", color: "#22c55e", marginLeft: 5 } }, card.word))))));
-    // Buttons rendered outside the card box so caller mounts them
-}
-// ─── StreakCard ───────────────────────────────────────────────────────────────
-function StreakCard({ streak, checkedDates, todayDone }) {
-    const days = getWeekDays(checkedDates, 7);
-    const isOnFire = streak >= 3;
-    return (React.createElement("div", { style: {
-            background: isOnFire
-                ? "linear-gradient(135deg,#2a1a08,#1a0e04)"
-                : "linear-gradient(135deg,#1a1f28,#0d1117)",
-            border: `1px solid ${isOnFire ? "#c9903a55" : "#30363d"}`,
-            borderRadius: 20,
-            padding: "20px 20px 18px",
-            marginBottom: 14,
-            position: "relative",
-            overflow: "hidden",
-        } },
-        isOnFire && (React.createElement("div", { style: {
-                position: "absolute", inset: 0,
-                background: "radial-gradient(ellipse at 20% 0%,rgba(240,192,64,.1),transparent 60%)",
-                pointerEvents: "none",
-            } })),
-        React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 12, marginBottom: 6 } },
-            React.createElement("div", { style: { fontSize: "2.2rem", lineHeight: 1 } }, streak === 0 ? "🌑" : isOnFire ? "🔥" : "✦"),
-            React.createElement("div", null,
-                React.createElement("div", { style: {
-                        fontFamily: "'Cinzel',serif",
-                        fontSize: "2.2rem",
-                        fontWeight: 900,
-                        color: streak === 0 ? "#3d4a5a" : "#f0c040",
-                        lineHeight: 1,
-                        letterSpacing: "-.01em",
-                    } },
-                    streak,
-                    " ",
-                    React.createElement("span", { style: { fontSize: "1.1rem", fontWeight: 700 } }, "\u5929")),
-                React.createElement("div", { style: {
-                        fontFamily: "Georgia,serif",
-                        fontSize: ".78rem",
-                        color: streak === 0 ? "#3d4a5a" : "#c9903a",
-                        marginTop: 2,
-                    } }, streak === 0
-                    ? "還沒開始連續學習"
-                    : todayDone
-                        ? "今天已打卡 ✓"
-                        : "早起學一個？"))),
-        React.createElement("div", { style: {
-                display: "grid",
-                gridTemplateColumns: "repeat(7,1fr)",
-                gap: 6,
-                marginTop: 14,
-            } }, days.map((d, i) => (React.createElement("div", { key: i, style: { display: "flex", flexDirection: "column", alignItems: "center", gap: 5 } },
-            React.createElement("div", { style: {
-                    fontFamily: "monospace",
-                    fontSize: ".56rem",
-                    color: d.isToday ? "#f0c040" : "#4a5568",
-                    letterSpacing: ".04em",
-                    fontWeight: d.isToday ? 700 : 400,
-                } }, d.label),
-            React.createElement("div", { style: Object.assign({ width: 34, height: 34, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: ".85rem", fontWeight: 700, transition: "all .3s" }, (d.checked
-                    ? {
-                        background: "linear-gradient(135deg,#c9903a,#f0c040)",
-                        boxShadow: "0 2px 10px rgba(240,192,64,.35)",
-                        color: "#0d1117",
-                    }
-                    : d.isToday
-                        ? {
-                            background: "#21262d",
-                            border: "2px dashed #c9903a55",
-                            color: "#3d4a5a",
-                        }
-                        : {
-                            background: "#161b22",
-                            border: "2px solid #21262d",
-                            color: "#21262d",
-                        })) }, d.checked ? "✓" : d.isToday ? "·" : ""))))),
-        streak > 0 && streak < 7 && (React.createElement("div", { style: {
-                marginTop: 12,
-                fontFamily: "monospace",
-                fontSize: ".54rem",
-                color: "#4a5568",
-                textAlign: "center",
-            } },
-            "\u518D ",
-            7 - streak,
-            " \u5929\u9054\u6210\u4E00\u9031\u9023\u7E8C \uD83C\uDFC6")),
-        streak >= 7 && (React.createElement("div", { style: {
-                marginTop: 12,
-                fontFamily: "monospace",
-                fontSize: ".54rem",
-                color: "#c9903a",
-                textAlign: "center",
-            } },
-            "\uD83C\uDFC6 \u9023\u7E8C ",
-            streak,
-            " \u5929\uFF01\u9B54\u6CD5\u5E2B\u7B49\u7D1A\u89E3\u9396"))));
-}
-function NovelCard({ novel, mastered, onRead }) {
-    const locked = mastered < novel.need;
-    const pct = Math.min(100, Math.round((mastered / novel.need) * 100));
-    return (React.createElement("div", { style: { background: locked ? "#0e1219" : "linear-gradient(135deg,#1c1033,#0f0a1e)",
-            border: `1px solid ${locked ? "#21262d" : "#3d2e6b"}`, borderRadius: 14,
-            padding: "16px 18px", marginBottom: 10, position: "relative", overflow: "hidden" } },
-        !locked && React.createElement("div", { style: { position: "absolute", top: 0, right: 0, width: 80, height: 80,
-                background: "radial-gradient(circle at 80% 0%,rgba(124,58,237,.18),transparent 70%)", pointerEvents: "none" } }),
-        React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 12 } },
-            React.createElement("div", { style: { fontSize: "1.8rem", opacity: locked ? .3 : 1 } }, novel.emoji),
-            React.createElement("div", { style: { flex: 1, minWidth: 0 } },
-                React.createElement("div", { style: { fontFamily: "'Cinzel',serif", fontSize: ".84rem", fontWeight: 700,
-                        color: locked ? "#3d4a5a" : "#f0c040", marginBottom: 2, lineHeight: 1.2 } }, novel.title),
-                React.createElement("div", { style: { fontFamily: "monospace", fontSize: ".54rem", color: locked ? "#2a3545" : "#7c3aed",
-                        letterSpacing: ".05em" } }, novel.subtitle)),
-            locked
-                ? React.createElement("div", { style: { fontFamily: "monospace", fontSize: ".6rem", color: "#3d4a5a", whiteSpace: "nowrap" } },
-                    "\uD83D\uDD12 ",
-                    novel.need,
-                    "\u5B57")
-                : React.createElement("button", { className: "btn btn-sm-purple", onClick: onRead }, "\u95B1\u8B80 \u2192")),
-        locked && React.createElement("div", { style: { marginTop: 10 } },
-            React.createElement("div", { style: { display: "flex", justifyContent: "space-between", marginBottom: 3 } },
-                React.createElement("span", { style: { fontFamily: "monospace", fontSize: ".54rem", color: "#3d4a5a" } }, "\u7CBE\u719F\u9032\u5EA6"),
-                React.createElement("span", { style: { fontFamily: "monospace", fontSize: ".54rem", color: "#f0c040" } },
-                    mastered,
-                    "/",
-                    novel.need)),
-            React.createElement("div", { style: { height: 4, background: "#21262d", borderRadius: 2, overflow: "hidden" } },
-                React.createElement("div", { style: { height: "100%", width: `${pct}%`, background: "linear-gradient(90deg,#7c3aed,#f0c040)", borderRadius: 2 } })))));
-}
-const CSS = `
-@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&display=swap');
-*{box-sizing:border-box;margin:0;padding:0}
-body{background:#0d1117}
-@keyframes spin{to{transform:rotate(360deg)}}
-@keyframes pop{0%{transform:scale(0.7)}60%{transform:scale(1.15)}100%{transform:scale(1)}}
-
-.pill{background:none;border:1px solid #30363d;border-radius:20px;padding:4px 11px;font-family:monospace;font-size:.62rem;cursor:pointer;color:#8b949e;transition:all .18s}
-.pill.on{background:#f0c040;border-color:#f0c040;color:#0d1117;font-weight:600}
-.badge{font-family:monospace;font-size:.6rem;padding:2px 8px;border-radius:20px;background:#21262d;border:1px solid #30363d;color:#f0c040;font-weight:600;white-space:nowrap}
-.filt{background:#161b22;border:1px solid #30363d;border-radius:8px;padding:5px 11px;font-family:monospace;font-size:.66rem;cursor:pointer;color:#8b949e;transition:all .15s}
-.filt.on{background:#7c3aed;border-color:#7c3aed;color:white}
-
-.btn{border:none;border-radius:12px;padding:12px 17px;font-family:'Cinzel',serif;font-size:.84rem;font-weight:700;cursor:pointer;letter-spacing:.04em;transition:all .18s;display:block;text-align:center}
-.btn-purple{background:linear-gradient(135deg,#7c3aed,#4f46e5);color:white;box-shadow:0 4px 18px rgba(124,58,237,.3)}
-.btn-purple:hover{transform:translateY(-2px);box-shadow:0 6px 26px rgba(124,58,237,.45)}
-.btn-purple:disabled{opacity:.35;cursor:not-allowed;transform:none!important}
-.btn-gold{background:linear-gradient(135deg,#f0c040,#c9903a);color:#0d1117;box-shadow:0 4px 16px rgba(240,192,64,.2)}
-.btn-gold:hover{transform:translateY(-2px)}
-.btn-gold:disabled{opacity:.35;cursor:not-allowed;transform:none!important}
-.btn-red{background:#2a0d0d;border:1.5px solid #ef4444;color:#ef4444;font-family:'Cinzel',serif;font-size:.84rem;font-weight:700;padding:12px;border-radius:12px;cursor:pointer;transition:all .18s;letter-spacing:.04em}
-.btn-red:hover{background:#3a1010}
-.btn-red-soft{background:#1a0808;border:1.5px solid #ef444455;color:#ef4444;font-family:'Cinzel',serif;font-size:.82rem;font-weight:700;padding:11px 17px;border-radius:12px;cursor:pointer;transition:all .18s;letter-spacing:.04em;display:block;text-align:center}
-.btn-red-soft:hover{border-color:#ef4444;background:#2a0d0d}
-.btn-red-soft:disabled{opacity:.35;cursor:not-allowed}
-.btn-green{background:#0d2a0d;border:1.5px solid #22c55e;color:#22c55e;font-family:'Cinzel',serif;font-size:.84rem;font-weight:700;padding:12px;border-radius:12px;cursor:pointer;transition:all .18s;letter-spacing:.04em}
-.btn-green:hover{background:#103a10}
-.btn-ghost{background:#161b22;border:1px solid #30363d;color:#c8d0da;font-family:monospace;font-size:.7rem;letter-spacing:.02em;padding:9px 13px;border-radius:12px;cursor:pointer;transition:all .18s}
-.btn-ghost:hover{border-color:#8b949e}
-.btn-ghost:disabled{opacity:.25;cursor:not-allowed}
-.btn-sm-purple{background:linear-gradient(135deg,#7c3aed,#4f46e5);color:white;border:none;border-radius:8px;padding:6px 13px;font-family:'Cinzel',serif;font-size:.74rem;font-weight:700;cursor:pointer;letter-spacing:.04em;white-space:nowrap;transition:all .18s}
-.btn-sm-purple:hover{transform:translateY(-1px)}
-
-.back{background:#161b22;border:1px solid #30363d;border-radius:8px;padding:5px 11px;font-family:monospace;font-size:.64rem;cursor:pointer;color:#8b949e;transition:all .15s}
-.back:hover{border-color:#f0c040;color:#f0c040}
-
-.phdr{display:flex;align-items:center;gap:6px;margin-bottom:12px;flex-wrap:wrap}
-.ptag{font-family:monospace;font-size:.6rem;padding:3px 8px;border-radius:4px}
-.ptag.purple{background:#1a1a2e;border:1px solid #7c3aed44;color:#a78bfa}
-.ptag.green{background:#1a2a1a;border:1px solid #22c55e44;color:#22c55e}
-.ptag.red{background:#1a0808;border:1px solid #ef444444;color:#ef4444}
-.combo{font-family:monospace;font-size:.66rem;font-weight:600;padding:3px 8px;border-radius:20px;background:#1a1a2e;border:1px solid #7c3aed55;color:#a78bfa}
-
-@media(max-width:480px){
-  .btn{padding:10px 13px;font-size:.78rem}
-  .pill{padding:3px 8px;font-size:.58rem}
-}
-`;
-function App() {
-    const [data, setData] = useState(load);
-    const [screen, setScreen] = useState("home");
-    const [tagFilter, setTagFilter] = useState("全部");
-    const [queue, setQueue] = useState([]);
-    const [cIdx, setCIdx] = useState(0);
-    const [seen, setSeen] = useState(new Set());
-    const [flipped, setFlipped] = useState(false);
-    const [sIdx, setSIdx] = useState(0);
-    const [input, setInput] = useState("");
-    const [spellRes, setSpellRes] = useState(null);
-    const inputRef = useRef(null);
-    // Ebbinghaus review
-    const [rQueue, setRQueue] = useState([]);
-    const [rIdx, setRIdx] = useState(0);
-    const [rFlip, setRFlip] = useState(false);
-    const [rInput, setRInput] = useState("");
-    const [rSpellRes, setRSpellRes] = useState(null); // null | "correct" | "wrong"
-    const rInputRef = useRef(null);
-    // Wrong review
-    const [wrQueue, setWrQueue] = useState([]);
-    const [wrIdx, setWrIdx] = useState(0);
-    const [wrFlip, setWrFlip] = useState(false);
-    const [wrInput, setWrInput] = useState("");
-    const [wrSpellRes, setWrSpellRes] = useState(null);
-    const wrInputRef = useRef(null);
-    const [sXP, setSXP] = useState(0);
-    const [combo, setCombo] = useState(0);
-    const [maxCombo, setMaxCombo] = useState(0);
-    const [sOk, setSOk] = useState(0);
-    const [sBad, setSBad] = useState(0);
-    const [wrongIds, setWrongIds] = useState(new Set());
-    const [activeNovel, setActiveNovel] = useState(null);
-    const [justUnlocked, setJustUnlocked] = useState(null);
-    // Scramble game state
-    const [scQueue, setScQueue] = useState([]); // words for this scramble session
-    const [scIdx, setScIdx] = useState(0);
-    const [scTokens, setScTokens] = useState([]); // [{id, word, used}]
-    const [scAnswer, setScAnswer] = useState([]); // [{id, word}]
-    const [scResult, setScResult] = useState(null); // null | "correct" | "wrong"
-    const [scXP, setScXP] = useState(0);
-    const [scCombo, setScCombo] = useState(0);
-    const [scMaxCombo, setScMaxCombo] = useState(0);
-    const [scOk, setScOk] = useState(0);
-    const [scBad, setScBad] = useState(0);
-    const upd = useCallback(fn => setData(p => { const n = fn(p); save(n); return n; }), []);
-    // Preload voices so first playback doesn't stutter
-    useEffect(() => {
-        if (!window.speechSynthesis)
-            return;
-        window.speechSynthesis.getVoices();
-        window.speechSynthesis.onvoiceschanged = () => { _voice = null; pickVoice(); };
-    }, []);
-    const getWords = useCallback(tag => tag === "全部" ? ALL_WORDS : ALL_WORDS.filter(w => w.tag === tag), []);
-    const getTodayWords = useCallback(() => {
-        var _a;
-        const today = new Date().toDateString();
-        if (data.lastDate === today && ((_a = data.dailyIds) === null || _a === void 0 ? void 0 : _a.length))
-            return data.dailyIds.map(id => ALL_WORDS.find(w => w.id === id)).filter(Boolean);
-        return shuffled(getWords(tagFilter).filter(w => !(data.progress || {})[w.id])).slice(0, WORDS_PER_DAY);
-    }, [data, tagFilter, getWords]);
-    const startLearn = useCallback(() => {
-        var _a;
-        const today = new Date().toDateString();
-        let words, ids;
-        if (data.lastDate === today && ((_a = data.dailyIds) === null || _a === void 0 ? void 0 : _a.length)) {
-            ids = data.dailyIds;
-            words = ids.map(id => ALL_WORDS.find(w => w.id === id)).filter(Boolean);
-        }
-        else {
-            words = shuffled(getWords(tagFilter).filter(w => !(data.progress || {})[w.id])).slice(0, WORDS_PER_DAY);
-            ids = words.map(w => w.id);
-            upd(d => (Object.assign(Object.assign({}, d), { lastDate: today, dailyIds: ids })));
-        }
-        if (!words.length)
-            return;
-        setQueue(words);
-        setCIdx(0);
-        setSeen(new Set([words[0].id]));
-        setFlipped(false);
-        setSXP(0);
-        setCombo(0);
-        setMaxCombo(0);
-        setSOk(0);
-        setSBad(0);
-        setWrongIds(new Set());
-        setScreen("cards");
-    }, [data, tagFilter, getWords, upd]);
-    const onSwipe = useCallback((dir) => {
-        const next = cIdx + dir;
-        if (next < 0 || next >= queue.length)
-            return;
-        setCIdx(next);
-        setFlipped(false);
-        setSeen(s => { const ns = new Set(s); ns.add(queue[next].id); return ns; });
-    }, [cIdx, queue]);
-    const allSeen = queue.length > 0 && queue.every(w => seen.has(w.id));
-    const startSpell = () => {
-        setSIdx(0);
-        setInput("");
-        setSpellRes(null);
-        setCombo(0);
-        setWrongIds(new Set());
-        setSOk(0);
-        setSBad(0);
-        setSXP(0);
-        setMaxCombo(0);
-        spellCorrectSet.current = new Set();
-        setScreen("spell");
-        setTimeout(() => { var _a; return (_a = inputRef.current) === null || _a === void 0 ? void 0 : _a.focus(); }, 150);
-    };
-    // Track whether each card in the queue has been answered correctly
-    const spellCorrectSet = useRef(new Set());
-    const prevMastered = useRef(0);
-    const retrySpell = () => {
-        // Reset just this card's input, keep score intact
-        setInput("");
-        setSpellRes(null);
-        setTimeout(() => { var _a; return (_a = inputRef.current) === null || _a === void 0 ? void 0 : _a.focus(); }, 100);
-    };
-    const advanceSpell = () => {
-        if (sIdx + 1 < queue.length) {
-            setSIdx(i => i + 1);
-            setInput("");
-            setSpellRes(null);
-            setTimeout(() => { var _a; return (_a = inputRef.current) === null || _a === void 0 ? void 0 : _a.focus(); }, 100);
-        }
-        else {
-            // Only succeed if every card was answered correctly at least once
-            const allCorrect = queue.every(w => spellCorrectSet.current.has(w.id));
-            if (allCorrect) {
-                const todayStr = new Date().toDateString();
-                upd(d => {
-                    const prev = d.checkedDates || [];
-                    return Object.assign(Object.assign({}, d), { checkedDates: prev.includes(todayStr) ? prev : [...prev, todayStr] });
-                });
-                const nm = ALL_WORDS.filter(w => { var _a; return ((_a = (data.progress || {})[w.id]) === null || _a === void 0 ? void 0 : _a.level) >= 3; }).length;
-                const ul = NOVELS.find(n => n.need <= nm && n.need > prevMastered.current);
-                if (ul)
-                    setJustUnlocked(ul);
-            }
-            setScreen("done");
-        }
-    };
-    const submitSpell = () => {
-        if (spellRes) {
-            advanceSpell();
-            return;
-        }
-        const card = queue[sIdx];
-        const ok = input.trim().toLowerCase() === card.word.toLowerCase();
-        setSpellRes(ok ? "correct" : "wrong");
-        const nc = ok ? combo + 1 : 0;
-        setCombo(nc);
-        setMaxCombo(m => Math.max(m, nc));
-        const earned = ok ? XP_OK + (nc >= 3 ? XP_BONUS : 0) : 0;
-        if (ok) {
-            setSOk(c => c + 1);
-            spellCorrectSet.current.add(card.id);
-        }
-        else {
-            setSBad(c => c + 1);
-            setWrongIds(s => { const ns = new Set(s); ns.add(card.id); return ns; });
-        }
-        setSXP(x => x + earned);
-        upd(d => {
-            const prev = (d.progress || {})[card.id] || { level: 0, correct: 0, incorrect: 0 };
-            const nl = ok ? Math.min(prev.level + 1, EBBINGHAUS.length - 1) : Math.max(0, prev.level - 1);
-            prevMastered.current = ALL_WORDS.filter(w => { var _a; return ((_a = (d.progress || {})[w.id]) === null || _a === void 0 ? void 0 : _a.level) >= 3; }).length;
-            return Object.assign(Object.assign({}, d), { xp: (d.xp || 0) + earned, progress: Object.assign(Object.assign({}, d.progress), { [card.id]: Object.assign(Object.assign({}, prev), { level: nl, correct: prev.correct + (ok ? 1 : 0), incorrect: prev.incorrect + (ok ? 0 : 1), lastReview: new Date().toISOString(), nextReview: nextReview(nl) }) }) });
-        });
-    };
-    const startWrongReview = () => {
-        const words = [...wrongIds].map(id => ALL_WORDS.find(w => w.id === id)).filter(Boolean);
-        if (!words.length)
-            return;
-        setWrQueue(shuffled(words));
-        setWrIdx(0);
-        setWrInput("");
-        setWrSpellRes(null);
-        setScreen("wrongReview");
-        setTimeout(() => { var _a; return (_a = wrInputRef.current) === null || _a === void 0 ? void 0 : _a.focus(); }, 150);
-    };
-    const wrongRetry = () => { setWrInput(""); setWrSpellRes(null); setTimeout(() => { var _a; return (_a = wrInputRef.current) === null || _a === void 0 ? void 0 : _a.focus(); }, 100); };
-    const wrongSubmit = () => {
-        if (wrSpellRes) {
-            if (wrSpellRes === "wrong") {
-                wrongRetry();
-                return;
-            } // retry stays on same card
-            // correct → advance
-            if (wrIdx + 1 < wrQueue.length) {
-                setWrIdx(i => i + 1);
-                setWrInput("");
-                setWrSpellRes(null);
-                setTimeout(() => { var _a; return (_a = wrInputRef.current) === null || _a === void 0 ? void 0 : _a.focus(); }, 100);
-            }
-            else
-                setScreen("done");
-            return;
-        }
-        const card = wrQueue[wrIdx];
-        const ok = wrInput.trim().toLowerCase() === card.word.toLowerCase();
-        setWrSpellRes(ok ? "correct" : "wrong");
-        upd(d => {
-            const prev = (d.progress || {})[card.id] || { level: 0, correct: 0, incorrect: 0 };
-            const nl = ok ? Math.min(prev.level + 1, EBBINGHAUS.length - 1) : Math.max(0, prev.level - 1);
-            return Object.assign(Object.assign({}, d), { progress: Object.assign(Object.assign({}, d.progress), { [card.id]: Object.assign(Object.assign({}, prev), { level: nl, correct: prev.correct + (ok ? 1 : 0), incorrect: prev.incorrect + (ok ? 0 : 1), lastReview: new Date().toISOString(), nextReview: nextReview(nl) }) }) });
-        });
-    };
-    const wrongSkip = () => {
-        if (wrIdx + 1 < wrQueue.length) {
-            setWrIdx(i => i + 1);
-            setWrInput("");
-            setWrSpellRes(null);
-            setTimeout(() => { var _a; return (_a = wrInputRef.current) === null || _a === void 0 ? void 0 : _a.focus(); }, 100);
-        }
-        else
-            setScreen("done");
-    };
-    const startReview = () => {
-        const prog = data.progress || {};
-        const words = shuffled(getWords(tagFilter).filter(w => isDue(prog[w.id])));
-        if (!words.length)
-            return;
-        setRQueue(words);
-        setRIdx(0);
-        setRInput("");
-        setRSpellRes(null);
-        setSXP(0);
-        setCombo(0);
-        setMaxCombo(0);
-        setSOk(0);
-        setSBad(0);
-        setWrongIds(new Set());
-        setScreen("review");
-        setTimeout(() => { var _a; return (_a = rInputRef.current) === null || _a === void 0 ? void 0 : _a.focus(); }, 150);
-    };
-    const reviewRetry = () => { setRInput(""); setRSpellRes(null); setTimeout(() => { var _a; return (_a = rInputRef.current) === null || _a === void 0 ? void 0 : _a.focus(); }, 100); };
-    const reviewSubmit = () => {
-        if (rSpellRes) {
-            if (rSpellRes === "wrong") {
-                reviewRetry();
-                return;
-            }
-            // correct → advance
-            if (rIdx + 1 < rQueue.length) {
-                setRIdx(i => i + 1);
-                setRInput("");
-                setRSpellRes(null);
-                setTimeout(() => { var _a; return (_a = rInputRef.current) === null || _a === void 0 ? void 0 : _a.focus(); }, 100);
-            }
-            else
-                setScreen("done");
-            return;
-        }
-        const card = rQueue[rIdx];
-        const ok = rInput.trim().toLowerCase() === card.word.toLowerCase();
-        setRSpellRes(ok ? "correct" : "wrong");
-        const nc = ok ? combo + 1 : 0;
-        setCombo(nc);
-        setMaxCombo(m => Math.max(m, nc));
-        const earned = ok ? XP_OK + (nc >= 3 ? XP_BONUS : 0) : 0;
-        if (ok)
-            setSOk(c => c + 1);
-        else {
-            setSBad(c => c + 1);
-            setWrongIds(s => { const ns = new Set(s); ns.add(card.id); return ns; });
-        }
-        setSXP(x => x + earned);
-        upd(d => {
-            const prev = (d.progress || {})[card.id] || { level: 0, correct: 0, incorrect: 0 };
-            const nl = ok ? Math.min(prev.level + 1, EBBINGHAUS.length - 1) : Math.max(0, prev.level - 1);
-            return Object.assign(Object.assign({}, d), { xp: (d.xp || 0) + earned, progress: Object.assign(Object.assign({}, d.progress), { [card.id]: Object.assign(Object.assign({}, prev), { level: nl, correct: prev.correct + (ok ? 1 : 0), incorrect: prev.incorrect + (ok ? 0 : 1), lastReview: new Date().toISOString(), nextReview: nextReview(nl) }) }) });
-        });
-    };
-    const reviewSkip = () => {
-        setSBad(c => c + 1);
-        setWrongIds(s => { const ns = new Set(s); ns.add(rQueue[rIdx].id); return ns; });
-        if (rIdx + 1 < rQueue.length) {
-            setRIdx(i => i + 1);
-            setRInput("");
-            setRSpellRes(null);
-            setTimeout(() => { var _a; return (_a = rInputRef.current) === null || _a === void 0 ? void 0 : _a.focus(); }, 100);
-        }
-        else
-            setScreen("done");
-    };
-    // ── Scramble game helpers ──
-    function tokenize(sentence) {
-        // Split sentence into word tokens, preserving punctuation attached to words
-        return sentence.match(/[\w']+[.,!?—;:]?/g) || sentence.split(" ");
-    }
-    function makeScTokens(sentence) {
-        return shuffled(tokenize(sentence).map((w, i) => ({ id: i, word: w, used: false })));
-    }
-    const startScramble = () => {
-        // Pick all words that have been learned (have progress), shuffle them
-        const pool = shuffled(ALL_WORDS.filter(w => (data.progress || {})[w.id]));
-        const picks = pool.length >= 5 ? pool.slice(0, 5) : shuffled(ALL_WORDS).slice(0, 5);
-        const tokens = makeScTokens(picks[0].example);
-        setScQueue(picks);
-        setScIdx(0);
-        setScTokens(tokens);
-        setScAnswer([]);
-        setScResult(null);
-        setScXP(0);
-        setScCombo(0);
-        setScMaxCombo(0);
-        setScOk(0);
-        setScBad(0);
-        setScreen("scramble");
-    };
-    const scTapToken = (tok) => {
-        if (scResult || tok.used)
-            return;
-        setScTokens(ts => ts.map(t => t.id === tok.id ? Object.assign(Object.assign({}, t), { used: true }) : t));
-        setScAnswer(a => [...a, { id: tok.id, word: tok.word }]);
-    };
-    const scRemoveLast = () => {
-        if (scResult || !scAnswer.length)
-            return;
-        const last = scAnswer[scAnswer.length - 1];
-        setScAnswer(a => a.slice(0, -1));
-        setScTokens(ts => ts.map(t => t.id === last.id ? Object.assign(Object.assign({}, t), { used: false }) : t));
-    };
-    const scClear = () => {
-        if (scResult)
-            return;
-        setScAnswer([]);
-        setScTokens(ts => ts.map(t => (Object.assign(Object.assign({}, t), { used: false }))));
-    };
-    const submitScramble = () => {
-        if (scResult) {
-            if (scIdx + 1 < scQueue.length) {
-                const next = scIdx + 1;
-                setScIdx(next);
-                setScTokens(makeScTokens(scQueue[next].example));
-                setScAnswer([]);
-                setScResult(null);
-            }
-            else {
-                setScreen("done");
-            }
-            return;
-        }
-        const card = scQueue[scIdx];
-        const correct = tokenize(card.example);
-        const attempt = scAnswer.map(a => a.word);
-        // Allow if all tokens placed and match
-        const ok = attempt.length === correct.length &&
-            attempt.every((w, i) => w.toLowerCase() === correct[i].toLowerCase());
-        setScResult(ok ? "correct" : "wrong");
-        const nc = ok ? scCombo + 1 : 0;
-        setScCombo(nc);
-        setScMaxCombo(m => Math.max(m, nc));
-        const earned = ok ? XP_OK + (nc >= 3 ? XP_BONUS : 0) : 0;
-        if (ok)
-            setScOk(c => c + 1);
-        else
-            setScBad(c => c + 1);
-        setScXP(x => x + earned);
-        upd(d => {
-            const prev = (d.progress || {})[card.id] || { level: 0, correct: 0, incorrect: 0 };
-            const nl = ok ? Math.min(prev.level + 1, EBBINGHAUS.length - 1) : Math.max(0, prev.level - 1);
-            return Object.assign(Object.assign({}, d), { xp: (d.xp || 0) + earned, progress: Object.assign(Object.assign({}, d.progress), { [card.id]: Object.assign(Object.assign({}, prev), { level: nl, correct: prev.correct + (ok ? 1 : 0), incorrect: prev.incorrect + (ok ? 0 : 1), lastReview: new Date().toISOString(), nextReview: nextReview(nl) }) }) });
-        });
-    };
-    function ReviewCard({ card, flipped, setFlipped, borderColor = "#30363d", accentColor = "#ef4444" }) {
-        const ts = card.tag === "高中" ? { background: "#1a2a1a", border: "1px solid #22c55e44", color: "#22c55e" } : { background: "#1a1a2e", border: "1px solid #7c3aed44", color: "#a78bfa" };
-        return (React.createElement("div", { style: { perspective: 1100, marginBottom: 14, cursor: "pointer" }, onClick: () => !flipped && setFlipped(true) },
-            React.createElement("div", { style: { width: "100%", minHeight: 340, position: "relative", transformStyle: "preserve-3d",
-                    transform: `rotateY(${flipped ? 180 : 0}deg)`, transition: "transform .5s cubic-bezier(.4,0,.2,1)", borderRadius: 20 } },
-                React.createElement("div", { style: { position: "absolute", inset: 0, backfaceVisibility: "hidden", WebkitBackfaceVisibility: "hidden",
-                        borderRadius: 20, background: "#161b22", border: `1px solid ${borderColor}`,
-                        display: "flex", flexDirection: "column", padding: "22px 20px" } },
-                    React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 } },
-                        React.createElement("div", { style: Object.assign({ fontFamily: "monospace", fontSize: ".56rem", padding: "2px 8px", borderRadius: 20 }, ts) },
-                            card.tag === "高中" ? "📗" : "🎓",
-                            " ",
-                            card.tag),
-                        !flipped && React.createElement("span", { style: { fontFamily: "monospace", fontSize: ".52rem", color: "#2a3545" } }, "\u9EDE\u64CA\u7FFB\u9762")),
-                    React.createElement("div", { style: { display: "flex", alignItems: "flex-end", gap: 8, marginBottom: 4 } },
-                        React.createElement("div", { style: { fontFamily: "'Cinzel',serif", fontSize: "2.2rem", fontWeight: 900, color: accentColor, lineHeight: 1 } }, card.word),
-                        React.createElement(SpeakBtn, { text: card.word, mode: "word", label: "\uD83D\uDD0A", style: { marginBottom: 3 } })),
-                    React.createElement("div", { style: { fontFamily: "monospace", fontSize: ".66rem", color: "#8b949e", marginBottom: 3 } }, card.phonetic),
-                    React.createElement("div", { style: { fontFamily: "monospace", fontSize: ".6rem", color: "#c9903a", marginBottom: 12 } }, card.pos),
-                    React.createElement("div", { style: { height: 1, background: "#21262d", marginBottom: 12 } }),
-                    React.createElement("div", { style: { fontFamily: "Georgia,serif", fontStyle: "italic", fontSize: ".85rem", color: "#a0aab4", lineHeight: 1.7, marginBottom: 6 } },
-                        React.createElement(Hl, { s: card.example, w: card.word })),
-                    React.createElement(SpeakBtn, { text: card.example, mode: "sentence", label: "\uD83C\uDF99 \u6717\u8B80\u4F8B\u53E5", style: { marginBottom: 8 } }),
-                    React.createElement("div", { style: { fontFamily: "Georgia,serif", fontSize: ".75rem", color: "#5a6a7a", lineHeight: 1.55,
-                            paddingLeft: 7, borderLeft: "2px solid #2a3545" } }, card.exTrans)),
-                React.createElement("div", { style: { position: "absolute", inset: 0, backfaceVisibility: "hidden", WebkitBackfaceVisibility: "hidden",
-                        borderRadius: 20, background: "linear-gradient(160deg,#1c1033,#0f0a1e)", border: "1px solid #3d2e6b",
-                        transform: "rotateY(180deg)", display: "flex", flexDirection: "column", alignItems: "center",
-                        justifyContent: "center", textAlign: "center", padding: "32px 26px" } },
-                    React.createElement("div", { style: { fontFamily: "Georgia,serif", fontSize: "1.9rem", fontWeight: 700, color: "#f0c040", lineHeight: 1.3, marginBottom: 10 } }, card.meaning),
-                    React.createElement("div", { style: { fontFamily: "monospace", fontSize: ".68rem", color: "#c9903a", marginBottom: 16 } }, card.pos),
-                    React.createElement("div", { style: { display: "flex", gap: 8, justifyContent: "center", marginBottom: 4 } },
-                        React.createElement(SpeakBtn, { text: card.word, mode: "word", label: "\uD83D\uDD0A \u55AE\u5B57" }),
-                        React.createElement(SpeakBtn, { text: card.example, mode: "sentence", label: "\uD83C\uDF99 \u4F8B\u53E5" }))))));
-    }
-    const prog = data.progress || {};
-    const xp = data.xp || 0;
-    const checkedDates = data.checkedDates || [];
-    const streak = calcStreak(checkedDates);
-    const todayW = getTodayWords();
-    const dueCount = ALL_WORDS.filter(w => isDue(prog[w.id])).length;
-    const learned = ALL_WORDS.filter(w => { var _a; return ((_a = prog[w.id]) === null || _a === void 0 ? void 0 : _a.level) > 0; }).length;
-    const mastered = ALL_WORDS.filter(w => { var _a; return (((_a = prog[w.id]) === null || _a === void 0 ? void 0 : _a.level) || 0) >= 3; }).length;
-    const todayDone = todayW.length > 0 && todayW.every(w => prog[w.id]);
-    const curCard = queue[cIdx], spellCard = queue[sIdx], revCard = rQueue[rIdx], wrCard = wrQueue[wrIdx];
-    return (React.createElement("div", { style: { minHeight: "100vh", background: "#0d1117", color: "#e6edf3", fontFamily: "Georgia,serif", display: "flex", flexDirection: "column", alignItems: "center" } },
-        /* CSS moved to <head> */
-        React.createElement("div", { style: { width: "100%", maxWidth: 700, padding: "16px 16px 0", display: "flex", alignItems: "center", gap: 8 } },
-            React.createElement("div", null,
-                React.createElement("div", { style: { fontFamily: "'Cinzel',serif", fontSize: "1.15rem", fontWeight: 900, color: "#f0c040", letterSpacing: ".05em" } }, "\u26A1 WizWord"),
-                React.createElement("div", { style: { fontFamily: "monospace", fontSize: ".5rem", color: "#8b949e", letterSpacing: ".08em", textTransform: "uppercase" } }, "Ebbinghaus \u00B7 Harry Potter")),
-            React.createElement("div", { style: { marginLeft: "auto", display: "flex", gap: 4 } },
-                React.createElement("button", { className: `pill ${screen !== "stats" && screen !== "library" && screen !== "novel" ? "on" : ""}`, onClick: () => setScreen("home") }, "\u9996\u9801"),
-                React.createElement("button", { className: `pill ${screen === "library" || screen === "novel" ? "on" : ""}`, onClick: () => setScreen("library") }, "\uD83D\uDCDA"),
-                React.createElement("button", { className: `pill ${screen === "stats" ? "on" : ""}`, onClick: () => setScreen("stats") }, "\u7D71\u8A08"))),
-        React.createElement("div", { style: { width: "100%", maxWidth: 700, padding: "8px 16px 0", display: "flex", alignItems: "center", gap: 7 } },
-            React.createElement("span", { className: "badge" },
-                "Lv.",
-                getLvl(xp)),
-            React.createElement("div", { style: { flex: 1, height: 5, background: "#21262d", borderRadius: 3, overflow: "hidden" } },
-                React.createElement("div", { style: { height: "100%", width: `${getXpRem(xp)}%`, background: "linear-gradient(90deg,#7c3aed,#f0c040)", borderRadius: 3, transition: "width .5s" } })),
-            React.createElement("span", { style: { fontFamily: "monospace", fontSize: ".56rem", color: "#8b949e", whiteSpace: "nowrap" } },
-                getXpRem(xp),
-                "/",
-                XP_LVL),
-            streak > 0 && React.createElement("span", { className: "badge" },
-                "\uD83D\uDD25",
-                streak),
-            React.createElement("span", { className: "badge", style: { color: "#a78bfa" } },
-                "\u26A1",
-                mastered)),
-        React.createElement("div", { style: { width: "100%", maxWidth: 700, padding: "18px 16px 60px" } },
-            screen === "home" && (React.createElement(React.Fragment, null,
-                React.createElement(StreakCard, { streak: streak, checkedDates: checkedDates, todayDone: todayDone }),
-                React.createElement("div", { style: { background: "linear-gradient(135deg,#1c1033,#0d1117)", border: "1px solid #3d2e6b", borderRadius: 16, padding: 24, marginBottom: 14, position: "relative", overflow: "hidden" } },
-                    React.createElement("div", { style: { position: "absolute", right: 16, top: 12, fontSize: "2.6rem", opacity: .06, pointerEvents: "none" } }, "\u26A1"),
-                    React.createElement("div", { style: { fontFamily: "monospace", fontSize: ".56rem", letterSpacing: ".12em", textTransform: "uppercase", color: "#7c3aed", marginBottom: 7 } }, "\u4ECA\u65E5\u4EFB\u52D9"),
-                    React.createElement("div", { style: { fontFamily: "'Cinzel',serif", fontSize: "1.25rem", fontWeight: 900, color: "#f0c040", marginBottom: 3 } }, "\u6BCF\u65E5 5 \u500B\u9B54\u6CD5\u55AE\u5B57"),
-                    React.createElement("div", { style: { fontFamily: "Georgia,serif", fontSize: ".8rem", color: "#8b949e", marginBottom: 16 } }, "\u5DE6\u53F3\u6ED1\u52D5 \u00B7 \u82F1\u6587\u4F8B\u53E5\uFF0B\u4E2D\u6587\u7FFB\u8B6F \u00B7 \u9ED8\u5BEB\u6311\u6230"),
-                    React.createElement("div", { style: { display: "grid", gridTemplateColumns: "repeat(5,1fr)", gap: 6, marginBottom: 16 } }, (todayW.length > 0 ? todayW : Array(5).fill(null)).map((w, i) => (React.createElement("div", { key: i, style: Object.assign({ aspectRatio: 1, borderRadius: 8, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", fontSize: ".66rem", fontFamily: "monospace", padding: 5, gap: 2, border: "1.5px solid" }, (w == null ? { borderColor: "#30363d", background: "#161b22", color: "#8b949e", opacity: .3 } : prog[w.id] ? { borderColor: "#22c55e44", background: "#0d2a0d", color: "#22c55e" } : { borderColor: "#c9903a77", background: "#1a1208", color: "#f0c040" })) },
-                        React.createElement("span", null, w == null ? "—" : prog[w.id] ? "✓" : "✦"),
-                        w && React.createElement("span", { style: { fontSize: ".38rem", opacity: .7, lineHeight: 1.2, wordBreak: "break-all", textAlign: "center" } }, w.word.length > 8 ? w.word.slice(0, 7) + "…" : w.word))))),
-                    React.createElement("button", { className: "btn btn-purple", style: { width: "100%" }, onClick: startLearn, disabled: todayDone || todayW.length === 0 }, todayDone ? "✓ 今日單字已完成" : "⚡ 開始學習今日 5 字")),
-                React.createElement("div", { style: { display: "flex", gap: 5, marginBottom: 11 } }, ["全部", "高中", "托福"].map(t => (React.createElement("button", { key: t, className: `filt ${tagFilter === t ? "on" : ""}`, onClick: () => setTagFilter(t) }, t === "全部" ? "全部" : t === "高中" ? "高中7000" : "托福")))),
-                React.createElement("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 7, marginBottom: 11 } }, [[learned, "已學習"], [mastered, "⚡精熟"], [dueCount, "待複習"], [ALL_WORDS.filter(w => { var _a; return (((_a = prog[w.id]) === null || _a === void 0 ? void 0 : _a.incorrect) || 0) > 0; }).length, "錯題"]].map(([v, l]) => (React.createElement("div", { key: l, style: { background: "#161b22", border: "1px solid #30363d", borderRadius: 10, padding: 11, textAlign: "center" } },
-                    React.createElement("div", { style: { fontFamily: "'Cinzel',serif", fontSize: "1.3rem", fontWeight: 700, color: "#f0c040" } }, v),
-                    React.createElement("div", { style: { fontFamily: "monospace", fontSize: ".52rem", color: "#8b949e", textTransform: "uppercase", letterSpacing: ".05em", marginTop: 1 } }, l))))),
-                React.createElement("div", { style: { display: "flex", gap: 7, marginBottom: 11 } },
-                    React.createElement("button", { className: "btn btn-gold", style: { flex: 1 }, onClick: startReview, disabled: dueCount === 0 }, dueCount > 0 ? `📖 複習(${dueCount})` : "✓ 已複習"),
-                    React.createElement("button", { className: "btn btn-red-soft", style: { flex: 1 }, onClick: () => {
-                            const ws = shuffled(ALL_WORDS.filter(w => { var _a; return (((_a = prog[w.id]) === null || _a === void 0 ? void 0 : _a.incorrect) || 0) > 0; }));
-                            if (!ws.length)
-                                return;
-                            setWrQueue(ws);
-                            setWrIdx(0);
-                            setWrFlip(false);
-                            setScreen("wrongReview");
-                        }, disabled: ALL_WORDS.filter(w => { var _a; return (((_a = prog[w.id]) === null || _a === void 0 ? void 0 : _a.incorrect) || 0) > 0; }).length === 0 }, "\u2717 \u932F\u984C\u8907\u7FD2")),
-                React.createElement("button", { className: "btn", style: {
-                        width: "100%", marginBottom: 11,
-                        background: "linear-gradient(135deg,#0f3a2e,#082a1e)",
-                        border: "1px solid #22c55e44", color: "#22c55e",
-                        display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
-                    }, onClick: startScramble },
-                    React.createElement("span", { style: { fontSize: "1.1rem" } }, "\uD83E\uDDE9"),
-                    React.createElement("span", null, "\u4F8B\u53E5\u91CD\u7D44\u904A\u6232"),
-                    React.createElement("span", { style: { fontFamily: "monospace", fontSize: ".6rem", color: "#22c55e88", marginLeft: 2 } }, learned > 0 ? `${Math.min(learned, 5)} 題` : "先背幾個字再來挑戰")),
-                React.createElement("div", { style: { background: "#161b22", border: "1px solid #30363d", borderRadius: 12, padding: 14, marginBottom: 11 } },
-                    React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 } },
-                        React.createElement("div", { style: { fontFamily: "monospace", fontSize: ".56rem", letterSpacing: ".1em", textTransform: "uppercase", color: "#7c3aed" } }, "\uD83D\uDCDA \u5C0F\u8AAA\u89E3\u9396\u9032\u5EA6"),
-                        React.createElement("button", { style: { background: "none", border: "none", fontFamily: "monospace", fontSize: ".6rem", color: "#a78bfa", cursor: "pointer" }, onClick: () => setScreen("library") }, "\u5168\u90E8 \u2192")),
-                    NOVELS.slice(0, 2).map(n => React.createElement(NovelCard, { key: n.id, novel: n, mastered: mastered, onRead: () => { setActiveNovel(n); setScreen("novel"); } }))),
-                React.createElement("div", { style: { background: "#161b22", border: "1px solid #30363d", borderRadius: 12, padding: 14 } },
-                    React.createElement("div", { style: { fontFamily: "monospace", fontSize: ".56rem", letterSpacing: ".1em", textTransform: "uppercase", color: "#7c3aed", marginBottom: 8 } }, "\u827E\u8CD3\u8C6A\u65AF\u8907\u7FD2\u9593\u9694"),
-                    React.createElement("div", { style: { display: "flex", gap: 4, flexWrap: "wrap" } }, ["隔天", "2天", "4天", "7天", "15天", "1月", "2月", "4月"].map((d, i) => (React.createElement("span", { key: i, style: { fontFamily: "monospace", fontSize: ".54rem", padding: "2px 6px", borderRadius: 3, background: i === 0 ? "#7c3aed22" : "#21262d", border: `1px solid ${i === 0 ? "#7c3aed44" : "#30363d"}`, color: i === 0 ? "#a78bfa" : "#8b949e" } },
-                        "\u00D7",
-                        i + 1,
-                        " ",
-                        d))))))),
-            screen === "cards" && curCard && (React.createElement(React.Fragment, null,
-                React.createElement("div", { className: "phdr" },
-                    React.createElement("button", { className: "back", onClick: () => setScreen("home") }, "\u2190 \u8FD4\u56DE"),
-                    React.createElement("span", { className: "ptag purple" }, "\uD83D\uDC41 \u55AE\u5B57\u5361"),
-                    React.createElement("div", { style: { display: "flex", gap: 4, alignItems: "center" } }, queue.map((w, i) => React.createElement("div", { key: i, style: { width: 7, height: 7, borderRadius: "50%", transition: "all .25s", background: i === cIdx ? "#f0c040" : seen.has(w.id) ? "#22c55e" : "#30363d", boxShadow: i === cIdx ? "0 0 6px #f0c04099" : seen.has(w.id) ? "0 0 4px #22c55e66" : "none" } }))),
-                    React.createElement("span", { style: { marginLeft: "auto", fontFamily: "monospace", fontSize: ".66rem", color: "#8b949e" } },
-                        cIdx + 1,
-                        "/",
-                        queue.length)),
-                React.createElement("div", { style: { height: 3, background: "#21262d", borderRadius: 2, marginBottom: 12, overflow: "hidden" } },
-                    React.createElement("div", { style: { height: "100%", borderRadius: 2, transition: "width .4s ease", background: "linear-gradient(90deg,#22c55e,#f0c040)", width: `${(seen.size / queue.length) * 100}%` } })),
-                React.createElement(FlashCard, { card: curCard, flipped: flipped, onFlip: () => setFlipped(f => !f), onSwipe: onSwipe, isFirst: cIdx === 0 && seen.size <= 1 }),
-                React.createElement("div", { style: { display: "flex", gap: 7, marginBottom: 11 } },
-                    React.createElement("button", { className: "btn btn-ghost", style: { flex: 1 }, onClick: () => onSwipe(-1), disabled: cIdx === 0 }, "\u2190 \u4E0A\u4E00\u5F35"),
-                    React.createElement("button", { className: "btn btn-ghost", style: { flex: 1 }, onClick: () => onSwipe(+1), disabled: cIdx === queue.length - 1 }, "\u4E0B\u4E00\u5F35 \u2192")),
-                allSeen
-                    ? React.createElement("button", { className: "btn btn-gold", style: { width: "100%" }, onClick: startSpell }, "\uD83D\uDD13 \u5168\u90E8\u770B\u5B8C\uFF01\u958B\u59CB\u9ED8\u5BEB \u2192")
-                    : React.createElement("div", { style: { textAlign: "center", fontFamily: "monospace", fontSize: ".6rem", color: "#3d4a5a", padding: 11, border: "1px dashed #21262d", borderRadius: 12 } },
-                        "\uD83D\uDD12 \u770B\u5B8C\u5168\u90E8 ",
-                        queue.length,
-                        " \u5F35\u5F8C\u89E3\u9396\u9ED8\u5BEB ",
-                        React.createElement("span", { style: { color: "#f0c040", marginLeft: 6 } },
-                            seen.size,
-                            "/",
-                            queue.length)))),
-            screen === "spell" && spellCard && (React.createElement(React.Fragment, null,
-                React.createElement("div", { className: "phdr" },
-                    React.createElement("button", { className: "back", onClick: () => setScreen("cards") }, "\u2190 \u56DE\u55AE\u5B57\u5361"),
-                    React.createElement("span", { className: "ptag green" }, "\u270D \u9ED8\u5BEB\u6311\u6230"),
-                    combo >= 2 && React.createElement("span", { className: "combo" },
-                        "\uD83D\uDD25 \u00D7",
-                        combo),
-                    React.createElement("span", { style: { marginLeft: "auto", fontFamily: "monospace", fontSize: ".66rem", color: "#8b949e" } },
-                        sIdx + 1,
-                        "/",
-                        queue.length)),
-                React.createElement("div", { style: { display: "flex", gap: 6, justifyContent: "center", marginBottom: 14 } }, queue.map((w, i) => {
-                    const done = spellCorrectSet.current.has(w.id);
-                    const active = i === sIdx;
-                    return (React.createElement("div", { key: i, style: Object.assign({ width: 28, height: 28, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: ".75rem", fontWeight: 700, transition: "all .3s" }, (done
-                            ? { background: "linear-gradient(135deg,#22c55e,#16a34a)", color: "#fff", boxShadow: "0 0 8px #22c55e66" }
-                            : active
-                                ? { background: "#1a1a2e", border: "2px solid #7c3aed", color: "#a78bfa", boxShadow: "0 0 8px #7c3aed55" }
-                                : { background: "#161b22", border: "2px solid #21262d", color: "#2a3545" })) }, done ? "✓" : i + 1));
-                })),
-                React.createElement("div", { style: { fontFamily: "monospace", fontSize: ".56rem", color: "#3d4a5a",
-                        textAlign: "center", marginBottom: 14, letterSpacing: ".04em" } }, "5 \u984C\u5168\u5C0D\u624D\u7B97\u5B8C\u6210 \u00B7 \u7B54\u932F\u53EF\u91CD\u8A66"),
-                React.createElement("div", { style: { background: "#161b22", border: "1px solid #30363d", borderRadius: 20, padding: 24, marginBottom: 14, textAlign: "center" } },
-                    React.createElement("div", { style: { fontFamily: "monospace", fontSize: ".56rem", letterSpacing: ".12em", textTransform: "uppercase", color: "#7c3aed", marginBottom: 11 } }, "\u6839\u64DA\u4E2D\u6587\u610F\u601D\uFF0C\u9ED8\u5BEB\u82F1\u6587\u55AE\u5B57"),
-                    React.createElement("div", { style: { fontFamily: "Georgia,serif", fontSize: "1.5rem", fontWeight: 600, color: "#f0c040", marginBottom: 3 } }, spellCard.meaning),
-                    React.createElement("div", { style: { fontFamily: "monospace", fontSize: ".64rem", color: "#8b949e", marginBottom: 14 } },
-                        spellCard.pos,
-                        " \u00B7 ",
-                        spellCard.phonetic),
-                    React.createElement("div", { style: { background: "#0d1117", borderRadius: 10, padding: "11px 13px", marginBottom: 16, border: "1px solid #21262d" } },
-                        React.createElement("div", { style: { fontFamily: "Georgia,serif", fontStyle: "italic", fontSize: ".84rem", color: "#8b949e", lineHeight: 1.7, marginBottom: 8 } },
-                            "\u300C",
-                            spellCard.example.replace(new RegExp(spellCard.word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "gi"), ch => "＿".repeat(ch.length)),
-                            "\u300D"),
-                        React.createElement("div", { style: { fontFamily: "Georgia,serif", fontSize: ".74rem", color: "#5a6a7a", lineHeight: 1.55, marginBottom: 10, textAlign: "left", paddingLeft: 6, borderLeft: "2px solid #2a3545" } }, spellCard.exTrans),
-                        React.createElement("div", { style: { display: "flex", gap: 7, justifyContent: "center", flexWrap: "wrap" } },
-                            React.createElement(SpeakBtn, { text: spellCard.word, mode: "word", label: "\uD83D\uDD0A \u55AE\u5B57" }),
-                            React.createElement(SpeakBtn, { text: spellCard.example, mode: "sentence", label: "\uD83C\uDF99 \u4F8B\u53E5" }))),
-                    React.createElement("div", { style: { display: "flex", justifyContent: "center", gap: 4, flexWrap: "wrap", marginBottom: 14 } }, spellCard.word.split("").map((ch, i) => {
-                        const typed = input[i] || "";
-                        const base = { width: 30, height: 38, borderRadius: 6, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Cinzel',serif", fontSize: ".84rem", fontWeight: 700, transition: "all .2s", border: "1.5px solid" };
-                        const st = spellRes === "correct" ? Object.assign(Object.assign({}, base), { background: "#0d2a0d", borderColor: "#22c55e", color: "#22c55e" }) : spellRes === "wrong" ? Object.assign(Object.assign({}, base), { background: "#2a0d0d", borderColor: "#ef4444", color: "#ef4444" }) : typed ? Object.assign(Object.assign({}, base), { background: "#1a1a2e", borderColor: "#7c3aed", color: "#a78bfa" }) : Object.assign(Object.assign({}, base), { background: "#21262d", borderColor: "#30363d", color: "#e6edf3" });
-                        return React.createElement("div", { key: i, style: st }, spellRes ? ch : typed);
-                    })),
-                    React.createElement("input", { ref: inputRef, style: { width: "100%", background: spellRes === "correct" ? "#0d2a0d" : spellRes === "wrong" ? "#2a0d0d" : "#21262d", border: `2px solid ${spellRes === "correct" ? "#22c55e" : spellRes === "wrong" ? "#ef4444" : "#30363d"}`, borderRadius: 12, padding: "13px 15px", fontFamily: "'Cinzel',serif", fontSize: "1.15rem", color: "#e6edf3", textAlign: "center", letterSpacing: ".08em", outline: "none" }, value: input, onChange: e => !spellRes && setInput(e.target.value), onKeyDown: e => e.key === "Enter" && submitSpell(), placeholder: "\u8F38\u5165\u82F1\u6587\uFF0C\u6309 Enter\u2026", disabled: !!spellRes, autoComplete: "off", autoCorrect: "off", spellCheck: false }),
-                    spellRes && React.createElement("div", { style: { marginTop: 11, fontFamily: "monospace", fontSize: ".78rem", color: spellRes === "correct" ? "#22c55e" : "#ef4444", lineHeight: 1.6 } }, spellRes === "correct"
-                        ? React.createElement(React.Fragment, null,
-                            React.createElement("span", null, "\u2713 \u6B63\u78BA\uFF01"),
-                            combo >= 3 && React.createElement(React.Fragment, null,
-                                " \uD83D\uDD25 \u00D7",
-                                combo),
-                            React.createElement("span", { style: { color: "#a78bfa", marginLeft: 6 } },
-                                "+",
-                                XP_OK + (combo >= 3 ? XP_BONUS : 0),
-                                " XP"))
-                        : React.createElement(React.Fragment, null,
-                            React.createElement("span", null, "\u2717 \u6B63\u78BA\u7B54\u6848\uFF1A"),
-                            React.createElement("b", { style: { fontFamily: "'Cinzel',serif", fontSize: ".95rem", color: "#22c55e", marginLeft: 5 } }, spellCard.word)))),
-                !spellRes && (React.createElement("button", { className: "btn btn-purple", style: { width: "100%" }, onClick: submitSpell }, "\u78BA\u8A8D\u7B54\u6848")),
-                spellRes === "correct" && (React.createElement("button", { className: "btn btn-purple", style: { width: "100%" }, onClick: advanceSpell }, sIdx + 1 < queue.length ? "下一個 →" : "查看結果 →")),
-                spellRes === "wrong" && (React.createElement("div", { style: { display: "flex", gap: 9 } },
-                    React.createElement("button", { className: "btn", style: { flex: 1,
-                            background: "#1a1208", border: "1.5px solid #c9903a55", color: "#c9903a",
-                            display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }, onClick: retrySpell }, "\uD83D\uDD04 \u518D\u8A66\u4E00\u6B21"),
-                    React.createElement("button", { className: "btn btn-ghost", style: { flex: 1 }, onClick: advanceSpell }, sIdx + 1 < queue.length ? "跳過 →" : "查看結果 →"))))),
-            screen === "wrongReview" && wrCard && (() => {
-                const res = wrSpellRes;
-                return (React.createElement(React.Fragment, null,
-                    React.createElement("div", { className: "phdr" },
-                        React.createElement("button", { className: "back", onClick: () => setScreen("home") }, "\u2190 \u8FD4\u56DE"),
-                        React.createElement("span", { className: "ptag red" }, "\u2717 \u932F\u984C\u8907\u7FD2"),
-                        React.createElement("span", { style: { marginLeft: "auto", fontFamily: "monospace", fontSize: ".66rem", color: "#8b949e" } },
-                            wrIdx + 1,
-                            "/",
-                            wrQueue.length)),
-                    React.createElement(SpellCard, { card: wrCard, input: wrInput, setInput: setWrInput, spellRes: res, inputRef: wrInputRef, onSubmit: wrongSubmit, onRetry: wrongRetry, onSkip: wrongSkip, accentColor: "#ef4444", isLast: wrIdx + 1 >= wrQueue.length }),
-                    !res && (React.createElement("button", { className: "btn btn-purple", style: { width: "100%" }, onClick: wrongSubmit }, "\u78BA\u8A8D\u7B54\u6848")),
-                    res === "correct" && (React.createElement("button", { className: "btn btn-purple", style: { width: "100%" }, onClick: wrongSubmit }, wrIdx + 1 < wrQueue.length ? "下一個 →" : "查看結果 →")),
-                    res === "wrong" && (React.createElement("div", { style: { display: "flex", gap: 9 } },
-                        React.createElement("button", { className: "btn", style: { flex: 1, background: "#1a1208",
-                                border: "1.5px solid #c9903a55", color: "#c9903a",
-                                display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }, onClick: wrongRetry }, "\uD83D\uDD04 \u518D\u8A66\u4E00\u6B21"),
-                        React.createElement("button", { className: "btn btn-ghost", style: { flex: 1 }, onClick: wrongSkip }, wrIdx + 1 < wrQueue.length ? "跳過 →" : "查看結果 →")))));
-            })(),
-            screen === "review" && revCard && (() => {
-                return (React.createElement(React.Fragment, null,
-                    React.createElement("div", { className: "phdr" },
-                        React.createElement("button", { className: "back", onClick: () => setScreen("home") }, "\u2190 \u8FD4\u56DE"),
-                        React.createElement("span", { className: "ptag purple" }, "\uD83D\uDCD6 \u827E\u8CD3\u8C6A\u65AF\u8907\u7FD2"),
-                        combo >= 2 && React.createElement("span", { className: "combo" },
-                            "\uD83D\uDD25 \u00D7",
-                            combo),
-                        React.createElement("span", { style: { marginLeft: "auto", fontFamily: "monospace", fontSize: ".66rem", color: "#8b949e" } },
-                            rIdx + 1,
-                            "/",
-                            rQueue.length)),
-                    React.createElement(SpellCard, { card: revCard, input: rInput, setInput: setRInput, spellRes: rSpellRes, inputRef: rInputRef, onSubmit: reviewSubmit, onRetry: reviewRetry, onSkip: reviewSkip, isLast: rIdx + 1 >= rQueue.length }),
-                    !rSpellRes && (React.createElement("button", { className: "btn btn-purple", style: { width: "100%" }, onClick: reviewSubmit }, "\u78BA\u8A8D\u7B54\u6848")),
-                    rSpellRes === "correct" && (React.createElement("button", { className: "btn btn-purple", style: { width: "100%" }, onClick: reviewSubmit }, rIdx + 1 < rQueue.length ? "下一個 →" : "查看結果 →")),
-                    rSpellRes === "wrong" && (React.createElement("div", { style: { display: "flex", gap: 9 } },
-                        React.createElement("button", { className: "btn", style: { flex: 1, background: "#1a1208",
-                                border: "1.5px solid #c9903a55", color: "#c9903a",
-                                display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }, onClick: reviewRetry }, "\uD83D\uDD04 \u518D\u8A66\u4E00\u6B21"),
-                        React.createElement("button", { className: "btn btn-ghost", style: { flex: 1 }, onClick: reviewSkip }, rIdx + 1 < rQueue.length ? "跳過 →" : "查看結果 →")))));
-            })(),
-            screen === "scramble" && scQueue[scIdx] && (() => {
-                const card = scQueue[scIdx];
-                const correct = tokenize(card.example);
-                const allPlaced = scAnswer.length === correct.length;
-                return (React.createElement(React.Fragment, null,
-                    React.createElement("div", { className: "phdr" },
-                        React.createElement("button", { className: "back", onClick: () => setScreen("home") }, "\u2190 \u8FD4\u56DE"),
-                        React.createElement("span", { className: "ptag green" }, "\uD83E\uDDE9 \u4F8B\u53E5\u91CD\u7D44"),
-                        scCombo >= 2 && React.createElement("span", { className: "combo" },
-                            "\uD83D\uDD25 \u00D7",
-                            scCombo),
-                        React.createElement("span", { style: { marginLeft: "auto", fontFamily: "monospace", fontSize: ".66rem", color: "#8b949e" } },
-                            scIdx + 1,
-                            "/",
-                            scQueue.length)),
-                    React.createElement("div", { style: { height: 3, background: "#21262d", borderRadius: 2, marginBottom: 16, overflow: "hidden" } },
-                        React.createElement("div", { style: { height: "100%", borderRadius: 2, background: "linear-gradient(90deg,#22c55e,#f0c040)",
-                                width: `${(scIdx / scQueue.length) * 100}%`, transition: "width .4s ease" } })),
-                    React.createElement("div", { style: { background: "linear-gradient(135deg,#1c1033,#0d1117)", border: "1px solid #3d2e6b",
-                            borderRadius: 16, padding: "18px 20px", marginBottom: 14 } },
-                        React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8, marginBottom: 10 } },
-                            React.createElement("span", { style: Object.assign({ fontFamily: "monospace", fontSize: ".56rem", padding: "2px 8px", borderRadius: 20 }, (card.tag === "高中" ? { background: "#1a2a1a", border: "1px solid #22c55e44", color: "#22c55e" } : { background: "#1a1a2e", border: "1px solid #7c3aed44", color: "#a78bfa" })) }, card.tag === "高中" ? "📗 高中" : "🎓 托福"),
-                            React.createElement(SpeakBtn, { text: card.example, mode: "sentence", label: "\uD83C\uDF99 \u807D\u4F8B\u53E5" })),
-                        React.createElement("div", { style: { fontFamily: "'Cinzel',serif", fontSize: "1.6rem", fontWeight: 900, color: "#f0c040",
-                                marginBottom: 4, letterSpacing: ".03em" } }, card.word),
-                        React.createElement("div", { style: { fontFamily: "monospace", fontSize: ".66rem", color: "#8b949e", marginBottom: 6 } },
-                            card.phonetic,
-                            " \u00B7 ",
-                            card.pos),
-                        React.createElement("div", { style: { fontFamily: "Georgia,serif", fontSize: ".8rem", color: "#6a7a8a", lineHeight: 1.55,
-                                paddingLeft: 7, borderLeft: "2px solid #2a3545" } }, card.exTrans)),
-                    React.createElement("div", { style: { background: "#0d1117", border: `2px solid ${scResult === "correct" ? "#22c55e" : scResult === "wrong" ? "#ef4444" : "#21262d"}`, borderRadius: 16, padding: "14px 14px", marginBottom: 10,
-                            minHeight: 68, display: "flex", flexWrap: "wrap", gap: 6, alignItems: "flex-start",
-                            transition: "border-color .3s", position: "relative" } },
-                        scAnswer.length === 0 && !scResult && (React.createElement("div", { style: { fontFamily: "monospace", fontSize: ".6rem", color: "#2a3545",
-                                position: "absolute", top: "50%", left: "50%", transform: "translate(-50%,-50%)",
-                                whiteSpace: "nowrap" } }, "\u9EDE\u64CA\u4E0B\u65B9\u55AE\u8A5E\u586B\u5165\u6B64\u8655")),
-                        scAnswer.map((tok, i) => (React.createElement("div", { key: tok.id, onClick: () => {
-                                if (scResult)
-                                    return;
-                                // tap placed token to remove it
-                                const removed = scAnswer[i];
-                                setScAnswer(a => a.filter((_, j) => j !== i));
-                                setScTokens(ts => ts.map(t => t.id === removed.id ? Object.assign(Object.assign({}, t), { used: false }) : t));
-                            }, style: {
-                                background: scResult === "correct" ? "linear-gradient(135deg,#0d2a0d,#0a1e0a)"
-                                    : scResult === "wrong" ? "#2a0d0d"
-                                        : "linear-gradient(135deg,#1a1a2e,#12112a)",
-                                border: `1.5px solid ${scResult === "correct" ? "#22c55e" : scResult === "wrong" ? "#ef4444" : "#7c3aed66"}`,
-                                borderRadius: 8, padding: "6px 12px",
-                                fontFamily: "Georgia,serif", fontSize: ".88rem",
-                                color: scResult === "correct" ? "#22c55e" : scResult === "wrong" ? "#ef4444" : "#c8d0da",
-                                cursor: scResult ? "default" : "pointer",
-                                userSelect: "none", transition: "all .15s",
-                                animation: scResult ? "none" : undefined,
-                            } }, tok.word)))),
-                    scResult && (React.createElement("div", { style: { textAlign: "center", marginBottom: 12,
-                            fontFamily: "monospace", fontSize: ".82rem",
-                            color: scResult === "correct" ? "#22c55e" : "#ef4444", lineHeight: 1.7 } },
-                        scResult === "correct"
-                            ? React.createElement(React.Fragment, null,
-                                "\u2713 \u5B8C\u7F8E\uFF01",
-                                scCombo >= 3 && React.createElement(React.Fragment, null,
-                                    " \uD83D\uDD25 \u00D7",
-                                    scCombo),
-                                React.createElement("span", { style: { color: "#a78bfa", marginLeft: 6 } },
-                                    "+",
-                                    XP_OK + (scCombo >= 3 ? XP_BONUS : 0),
-                                    " XP"))
-                            : React.createElement("span", null, "\u2717 \u6B63\u78BA\u9806\u5E8F\u662F\uFF1A"),
-                        scResult === "wrong" && (React.createElement("div", { style: { fontFamily: "Georgia,serif", fontStyle: "italic",
-                                fontSize: ".84rem", color: "#8b949e", marginTop: 6,
-                                background: "#161b22", borderRadius: 10, padding: "10px 14px",
-                                border: "1px solid #30363d", textAlign: "left", lineHeight: 1.7 } },
-                            React.createElement(Hl, { s: card.example, w: card.word }))))),
-                    !scResult && (React.createElement("div", { style: { display: "flex", flexWrap: "wrap", gap: 7, marginBottom: 14,
-                            background: "#161b22", borderRadius: 14, padding: "14px 12px",
-                            border: "1px solid #30363d" } }, scTokens.map(tok => (React.createElement("div", { key: tok.id, onClick: () => scTapToken(tok), style: {
-                            background: tok.used ? "#21262d" : "linear-gradient(135deg,#1a2a1a,#0f1e0f)",
-                            border: `1.5px solid ${tok.used ? "#21262d" : "#22c55e55"}`,
-                            borderRadius: 8, padding: "7px 13px",
-                            fontFamily: "Georgia,serif", fontSize: ".9rem",
-                            color: tok.used ? "#2a3545" : "#c8d0da",
-                            cursor: tok.used ? "default" : "pointer",
-                            userSelect: "none", transition: "all .2s",
-                            textDecoration: tok.used ? "line-through" : "none",
-                            opacity: tok.used ? .4 : 1,
-                        } }, tok.word))))),
-                    !scResult ? (React.createElement("div", { style: { display: "flex", gap: 8, marginBottom: 8 } },
-                        React.createElement("button", { className: "btn btn-ghost", style: { flex: 1 }, onClick: scRemoveLast, disabled: !scAnswer.length }, "\u232B \u522A\u9664"),
-                        React.createElement("button", { className: "btn btn-ghost", style: { flex: 1 }, onClick: scClear, disabled: !scAnswer.length }, "\u2715 \u6E05\u7A7A"),
-                        React.createElement("button", { className: "btn btn-purple", style: { flex: 2 }, onClick: submitScramble, disabled: !allPlaced }, "\u78BA\u8A8D\u7B54\u6848"))) : (React.createElement("button", { className: "btn btn-purple", style: { width: "100%" }, onClick: submitScramble }, scIdx + 1 < scQueue.length ? "下一題 →" : "查看結果 →")),
-                    React.createElement("div", { style: { fontFamily: "monospace", fontSize: ".54rem", color: "#2a3545",
-                            textAlign: "center", marginTop: 8 } },
-                        correct.length,
-                        " \u500B\u55AE\u8A5E \u00B7 \u9EDE\u64CA\u5DF2\u586B\u5165\u7684\u8A5E\u53EF\u79FB\u9664")));
-            })(),
-            screen === "done" && (() => {
-                const fromScramble = scOk + scBad > 0 && sOk + sBad === 0;
-                const dOk = fromScramble ? scOk : sOk;
-                const dBad = fromScramble ? scBad : sBad;
-                const dXP = fromScramble ? scXP : sXP;
-                const dCombo = fromScramble ? scMaxCombo : maxCombo;
-                const dStars = dOk >= 5 ? 3 : dOk >= 3 ? 2 : 1;
-                const dLabel = fromScramble ? "🧩 重組" : "✍ 默寫";
-                // For spell: check if all 5 were correctly answered
-                const spellPassed = fromScramble ? null : queue.every(w => spellCorrectSet.current.has(w.id));
-                return (React.createElement(React.Fragment, null,
-                    justUnlocked && React.createElement("div", { style: { background: "linear-gradient(135deg,#1c1033,#0f0a1e)", border: "2px solid #7c3aed", borderRadius: 20, padding: "28px 24px", textAlign: "center", marginBottom: 14, boxShadow: "0 0 40px rgba(124,58,237,.4)" } },
-                        React.createElement("div", { style: { fontSize: "2.6rem", marginBottom: 8 } }, "\uD83C\uDF89"),
-                        React.createElement("div", { style: { fontFamily: "'Cinzel',serif", fontSize: "1rem", fontWeight: 900, color: "#f0c040", marginBottom: 5 } }, "\u65B0\u7AE0\u7BC0\u89E3\u9396\uFF01"),
-                        React.createElement("div", { style: { fontFamily: "'Cinzel',serif", fontSize: "1.2rem", color: "#a78bfa", marginBottom: 14 } },
-                            justUnlocked.emoji,
-                            " ",
-                            justUnlocked.title),
-                        React.createElement("button", { className: "btn btn-purple", onClick: () => { setActiveNovel(justUnlocked); setJustUnlocked(null); setScreen("novel"); } }, "\u7ACB\u5373\u95B1\u8B80 \uD83D\uDCD6"),
-                        React.createElement("button", { style: { display: "block", margin: "8px auto 0", background: "none", border: "none", fontFamily: "monospace", fontSize: ".64rem", color: "#8b949e", cursor: "pointer" }, onClick: () => setJustUnlocked(null) }, "\u7A0D\u5F8C\u518D\u8B80")),
-                    React.createElement("div", { style: { background: "#161b22", border: "1px solid #30363d", borderRadius: 20, padding: "36px 26px", textAlign: "center" } },
-                        React.createElement("div", { style: { fontFamily: "monospace", fontSize: ".56rem", color: "#8b949e", letterSpacing: ".1em", textTransform: "uppercase", marginBottom: 10 } },
-                            dLabel,
-                            " \u7D50\u679C"),
-                        !fromScramble && (React.createElement("div", { style: { marginBottom: 14, padding: "10px 16px", borderRadius: 12,
-                                background: spellPassed ? "#0d2a0d" : "#1a0808",
-                                border: `1px solid ${spellPassed ? "#22c55e44" : "#ef444444"}`,
-                                fontFamily: "monospace", fontSize: ".72rem",
-                                color: spellPassed ? "#22c55e" : "#ef4444" } }, spellPassed
-                            ? "🎉 5 題全對！打卡成功，繼續保持！"
-                            : `⚠️ 還有 ${queue.length - dOk} 題未完成，繼續加油！`)),
-                        React.createElement("div", { style: { fontSize: "2.2rem", letterSpacing: 4, marginBottom: 12 } }, "⭐".repeat(dStars)),
-                        React.createElement("div", { style: { fontFamily: "'Cinzel',serif", fontSize: "1.6rem", fontWeight: 900, color: "#f0c040", marginBottom: 6 } }, dOk > dBad ? "Excellent!" : "Keep Going!"),
-                        React.createElement("div", { style: { fontFamily: "monospace", fontSize: "1.9rem", fontWeight: 700, color: "#7c3aed", marginBottom: 2 } },
-                            "+",
-                            dXP),
-                        React.createElement("div", { style: { fontFamily: "monospace", fontSize: ".56rem", color: "#8b949e", textTransform: "uppercase", letterSpacing: ".1em", marginBottom: 18 } }, "XP \u7372\u5F97"),
-                        React.createElement("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 7, marginBottom: 18 } }, [[dOk, "#22c55e", "正確"], [dBad, "#ef4444", "錯誤"], [dCombo, "#a78bfa", "連勝"]].map(([v, c, l]) => (React.createElement("div", { key: l, style: { background: "#21262d", borderRadius: 9, padding: 11 } },
-                            React.createElement("div", { style: { fontFamily: "'Cinzel',serif", fontSize: "1.35rem", fontWeight: 700, color: c, marginBottom: 2 } }, v),
-                            React.createElement("div", { style: { fontFamily: "monospace", fontSize: ".52rem", color: "#8b949e", textTransform: "uppercase" } }, l))))),
-                        !fromScramble && !spellPassed && (React.createElement("button", { className: "btn btn-gold", style: { width: "100%", marginBottom: 9 }, onClick: startSpell }, "\uD83D\uDD04 \u91CD\u65B0\u6311\u6230\u9ED8\u5BEB")),
-                        !fromScramble && wrongIds.size > 0 && (React.createElement("button", { className: "btn btn-red-soft", style: { width: "100%", marginBottom: 9 }, onClick: startWrongReview },
-                            "\u2717 \u8907\u7FD2\u932F\u8AA4\u55AE\u5B57 (",
-                            wrongIds.size,
-                            ")")),
-                        React.createElement("button", { className: "btn btn-purple", style: { width: "100%", marginBottom: 7 }, onClick: () => setScreen("home") }, "\u56DE\u9996\u9801"),
-                        React.createElement("button", { className: "btn btn-ghost", style: { width: "100%" }, onClick: () => setScreen("library") }, "\uD83D\uDCDA \u66F8\u5EAB"))));
-            })(),
-            screen === "library" && (React.createElement(React.Fragment, null,
-                React.createElement("div", { style: { fontFamily: "'Cinzel',serif", fontSize: "1.2rem", fontWeight: 900, color: "#f0c040", marginBottom: 3 } }, "\uD83D\uDCDA \u9B54\u6CD5\u66F8\u5EAB"),
-                React.createElement("div", { style: { fontFamily: "Georgia,serif", fontSize: ".8rem", color: "#8b949e", marginBottom: 16 } }, "\u7CBE\u719F\u55AE\u5B57\u89E3\u9396\u54C8\u5229\u6CE2\u7279\u539F\u6587\u7AE0\u7BC0\uFF01"),
-                React.createElement("div", { style: { background: "#161b22", border: "1px solid #30363d", borderRadius: 12, padding: "14px 18px", marginBottom: 14 } },
-                    React.createElement("div", { style: { display: "flex", justifyContent: "space-between", marginBottom: 7 } },
-                        React.createElement("span", { style: { fontFamily: "monospace", fontSize: ".56rem", letterSpacing: ".1em", textTransform: "uppercase", color: "#7c3aed" } }, "\u7CBE\u719F\u9032\u5EA6"),
-                        React.createElement("span", { style: { fontFamily: "monospace", fontSize: ".7rem", color: "#f0c040", fontWeight: 700 } },
-                            mastered,
-                            " / ",
-                            ALL_WORDS.length)),
-                    React.createElement("div", { style: { height: 5, background: "#21262d", borderRadius: 3, overflow: "hidden" } },
-                        React.createElement("div", { style: { height: "100%", width: `${Math.round(mastered / ALL_WORDS.length * 100)}%`, background: "linear-gradient(90deg,#7c3aed,#f0c040)", borderRadius: 3 } }))),
-                NOVELS.map(n => React.createElement(NovelCard, { key: n.id, novel: n, mastered: mastered, onRead: () => { setActiveNovel(n); setScreen("novel"); } })),
-                React.createElement("div", { style: { fontFamily: "monospace", fontSize: ".58rem", color: "#3d4a5a", textAlign: "center", marginTop: 10 } }, "\uD83D\uDCA1 \u7CBE\u719F = \u8A18\u61B6\u7B49\u7D1A Lv.3\uFF08\u9ED8\u5BEB\u9023\u7E8C\u6B63\u78BA 3 \u6B21\uFF09"))),
-            screen === "novel" && activeNovel && (React.createElement(React.Fragment, null,
-                React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8, marginBottom: 18 } },
-                    React.createElement("button", { className: "back", onClick: () => setScreen("library") }, "\u2190 \u66F8\u5EAB"),
-                    React.createElement("div", { style: { fontFamily: "monospace", fontSize: ".56rem", letterSpacing: ".08em", textTransform: "uppercase", color: "#7c3aed" } }, "\u539F\u6587\u95B1\u8B80")),
-                React.createElement("div", { style: { background: "linear-gradient(160deg,#1c1033,#0f0a1e)", border: "1px solid #3d2e6b", borderRadius: 20, padding: "28px 24px" } },
-                    React.createElement("div", { style: { fontSize: "2rem", textAlign: "center", marginBottom: 12 } }, activeNovel.emoji),
-                    React.createElement("div", { style: { fontFamily: "'Cinzel',serif", fontSize: "1.05rem", fontWeight: 900, color: "#f0c040", textAlign: "center", marginBottom: 3, lineHeight: 1.3 } }, activeNovel.title),
-                    React.createElement("div", { style: { fontFamily: "monospace", fontSize: ".56rem", color: "#7c3aed", letterSpacing: ".08em", textAlign: "center", marginBottom: 20 } }, activeNovel.subtitle),
-                    React.createElement("div", { style: { height: 1, background: "#3d2e6b", marginBottom: 20 } }),
-                    React.createElement("div", { style: { fontFamily: "Georgia,serif", fontSize: ".98rem", color: "#c8d0da", lineHeight: 1.95, whiteSpace: "pre-wrap" } }, activeNovel.excerpt)),
-                React.createElement("div", { style: { textAlign: "center", marginTop: 14 } },
-                    React.createElement("button", { className: "btn btn-purple", onClick: () => setScreen("home") }, "\u7E7C\u7E8C\u80CC\u55AE\u5B57 \u2192")))),
-            screen === "stats" && (() => {
-                const ap = data.progress || {};
-                const tc = ALL_WORDS.reduce((s, w) => { var _a; return s + (((_a = ap[w.id]) === null || _a === void 0 ? void 0 : _a.correct) || 0); }, 0);
-                const ti = ALL_WORDS.reduce((s, w) => { var _a; return s + (((_a = ap[w.id]) === null || _a === void 0 ? void 0 : _a.incorrect) || 0); }, 0);
-                const acc = (tc + ti) > 0 ? Math.round(tc / (tc + ti) * 100) : 0;
-                const lc = EBBINGHAUS.map((_, l) => ALL_WORDS.filter(w => { var _a; return (((_a = ap[w.id]) === null || _a === void 0 ? void 0 : _a.level) || 0) === l && ap[w.id]; }).length);
-                const ml = Math.max(...lc, 1);
-                const ww = ALL_WORDS.filter(w => { var _a; return (((_a = ap[w.id]) === null || _a === void 0 ? void 0 : _a.incorrect) || 0) > 0; }).sort((a, b) => { var _a, _b; return (((_a = ap[b.id]) === null || _a === void 0 ? void 0 : _a.incorrect) || 0) - (((_b = ap[a.id]) === null || _b === void 0 ? void 0 : _b.incorrect) || 0); });
-                return (React.createElement(React.Fragment, null,
-                    React.createElement("div", { style: { fontFamily: "monospace", fontSize: ".58rem", letterSpacing: ".12em", textTransform: "uppercase", color: "#7c3aed", marginBottom: 13 } }, "\u5B78\u7FD2\u7D71\u8A08"),
-                    React.createElement("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 7, marginBottom: 16 } }, [[learned, "已學習"], [mastered, "⚡精熟"], [acc + "%", "答對率"]].map(([v, l]) => (React.createElement("div", { key: l, style: { background: "#161b22", border: "1px solid #30363d", borderRadius: 10, padding: 11, textAlign: "center" } },
-                        React.createElement("div", { style: { fontFamily: "'Cinzel',serif", fontSize: "1.35rem", fontWeight: 700, color: "#f0c040" } }, v),
-                        React.createElement("div", { style: { fontFamily: "monospace", fontSize: ".52rem", color: "#8b949e", textTransform: "uppercase", letterSpacing: ".05em", marginTop: 1 } }, l))))),
-                    ["高中", "托福"].map(tag => {
-                        const ws = ALL_WORDS.filter(w => w.tag === tag);
-                        const ln = ws.filter(w => { var _a; return ((_a = ap[w.id]) === null || _a === void 0 ? void 0 : _a.level) > 0; }).length;
-                        return (React.createElement("div", { key: tag, style: { background: "#161b22", border: "1px solid #30363d", borderRadius: 10, padding: "13px 17px", marginBottom: 7 } },
-                            React.createElement("div", { style: { display: "flex", justifyContent: "space-between", marginBottom: 5 } },
-                                React.createElement("span", { style: { fontFamily: "Georgia,serif", fontWeight: 600, fontSize: ".9rem" } }, tag === "高中" ? "高中 7000 單" : "托福核心"),
-                                React.createElement("span", { style: { fontFamily: "monospace", fontSize: ".64rem", color: "#8b949e" } },
-                                    ln,
-                                    "/",
-                                    ws.length)),
-                            React.createElement("div", { style: { height: 4, background: "#21262d", borderRadius: 2, overflow: "hidden" } },
-                                React.createElement("div", { style: { height: "100%", width: `${Math.round(ln / ws.length * 100)}%`, background: "linear-gradient(90deg,#7c3aed,#f0c040)", borderRadius: 2 } }))));
-                    }),
-                    React.createElement("div", { style: { fontFamily: "monospace", fontSize: ".56rem", letterSpacing: ".1em", textTransform: "uppercase", color: "#7c3aed", margin: "16px 0 9px" } }, "\u8A18\u61B6\u7B49\u7D1A\u5206\u4F48"),
-                    React.createElement("div", { style: { display: "flex", gap: 5, alignItems: "flex-end", height: 68, marginBottom: 22 } }, EBBINGHAUS.map((_, l) => (React.createElement("div", { key: l, style: { flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 3 } },
-                        React.createElement("div", { style: { width: "100%", height: lc[l] > 0 ? Math.max(7, Math.round(lc[l] / ml * 56)) : 3, background: lc[l] > 0 ? "linear-gradient(to top,#7c3aed,#f0c040)" : "#21262d", borderRadius: "3px 3px 0 0", transition: "height .5s" } }),
-                        React.createElement("div", { style: { fontFamily: "monospace", fontSize: ".46rem", color: "#8b949e" } }, ["1d", "2d", "4d", "7d", "15d", "1m", "2m", "4m"][l]))))),
-                    ww.length > 0 && React.createElement(React.Fragment, null,
-                        React.createElement("div", { style: { fontFamily: "monospace", fontSize: ".56rem", letterSpacing: ".1em", textTransform: "uppercase", color: "#ef4444", marginBottom: 8 } }, "\u932F\u8AA4\u6B21\u6578\u6700\u591A"),
-                        React.createElement("div", { style: { background: "#161b22", border: "1px solid #30363d", borderRadius: 11, overflow: "hidden", marginBottom: 13 } }, ww.slice(0, 5).map((w, i) => {
-                            var _a;
-                            return (React.createElement("div", { key: w.id, style: { display: "flex", alignItems: "center", gap: 9, padding: "9px 14px", borderBottom: i < 4 ? "1px solid #21262d" : "none" } },
-                                React.createElement("span", { style: { fontFamily: "'Cinzel',serif", fontSize: ".86rem", fontWeight: 700, color: "#f0c040", minWidth: 100 } }, w.word),
-                                React.createElement("span", { style: { fontFamily: "Georgia,serif", fontSize: ".75rem", color: "#8b949e", flex: 1 } }, w.meaning),
-                                React.createElement("span", { style: { fontFamily: "monospace", fontSize: ".58rem", color: "#ef4444", whiteSpace: "nowrap" } },
-                                    "\u2717", (_a = ap[w.id]) === null || _a === void 0 ? void 0 :
-                                    _a.incorrect)));
-                        })),
-                        React.createElement("button", { className: "btn btn-red-soft", style: { width: "100%", marginBottom: 11 }, onClick: () => { setWrQueue(shuffled(ww)); setWrIdx(0); setWrFlip(false); setScreen("wrongReview"); } }, "\u2717 \u958B\u59CB\u932F\u984C\u8907\u7FD2")),
-                    React.createElement("button", { style: { background: "none", border: "1px solid #30363d", borderRadius: 8, padding: "6px 13px", color: "#8b949e", cursor: "pointer", fontFamily: "monospace", fontSize: ".66rem" }, onClick: () => { if (confirm("確定清除？"))
-                            upd(() => ({})); } }, "\u91CD\u7F6E\u9032\u5EA6")));
-            })())));
-}
-
-try {
-  ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(App));
-  document.getElementById('loading').remove();
-} catch(e) {
-  document.getElementById('loading').innerHTML =
-    '<div style="color:#ef4444;padding:30px;text-align:center;font-family:monospace;line-height:2">⚠️ 載入錯誤<br><small style="color:#8b949e">' + e.message + '</small></div>';
-  console.error('App error:', e);
-}
-  </script>
-
-  <script>
-    const m={name:"WizWord",short_name:"WizWord",start_url:"./",display:"standalone",background_color:"#0d1117",theme_color:"#0d1117"};
-    const b=new Blob([JSON.stringify(m)],{type:"application/json"});
-    const lk=document.createElement("link");lk.rel="manifest";lk.href=URL.createObjectURL(b);document.head.appendChild(lk);
-    const isIOS=/iphone|ipad|ipod/i.test(navigator.userAgent);
-    const isSA=window.navigator.standalone||window.matchMedia('(display-mode:standalone)').matches;
-    if(isIOS&&!isSA&&!localStorage.getItem('hint')){
-      setTimeout(()=>{
-        const d=document.createElement('div');
-        d.style.cssText='position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1c1033;border:1px solid #7c3aed;border-radius:16px;padding:16px 20px;max-width:300px;width:90%;z-index:9999;font-family:monospace;font-size:.74rem;color:#e6edf3;text-align:center;box-shadow:0 8px 32px rgba(0,0,0,.7)';
-        d.innerHTML='<div style="font-size:1.2rem;margin-bottom:8px">📲 加入主畫面</div><div style="color:#8b949e;line-height:1.6">點 Safari 底部 <b style="color:#f0c040">分享</b> → <b style="color:#f0c040">加入主畫面</b></div><button onclick="this.parentElement.remove();localStorage.setItem(\'hint\',\'1\')" style="margin-top:12px;background:#7c3aed;border:none;border-radius:8px;padding:8px 20px;color:white;cursor:pointer">知道了</button>';
-        document.body.appendChild(d);
-      },3000);
-    }
-  </script>
-
+// 執行初始化
+initApp();
+</script>
 </body>
 </html>
